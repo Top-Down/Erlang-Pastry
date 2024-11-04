@@ -1,0 +1,147 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+}
+
+.header-box {
+    width: 100%;
+    background-color: #1f1f1f;
+    text-align: center;
+    padding: 20px 0;
+    color: #ffffff;
+    position: relative;
+}
+
+.search-container {
+    display: flex;
+    justify-content: center;
+    margin-top: -10px;
+}
+
+.search-form {
+    background-color: #1f1f1f;
+    padding: 8px 15px 8px 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.search-form input[type="text"] {
+    padding: 10px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 5px;
+    background-color: #333333;
+    color: #ffffff;
+}
+
+.search-form button {
+    margin: 0 0 0 10px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #6200ea;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.search-form button:hover {
+    background-color: #3700b3;
+}
+
+.centered-div {
+	width: 100%;
+    height: 25vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-top: 50px;
+}
+
+.centered-div form {
+    width: 25%;
+    height: 100%;
+    background-color: #1f1f1f;
+    padding: 20px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.upload-label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed #6200ea;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #ffffff;
+}
+
+.upload-input {
+    display: none;
+}
+
+.upload-form button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #6200ea;
+    color: #ffffff;
+    cursor: pointer;
+    position: relative;
+}
+
+.upload-form button:hover {
+    background-color: #3700b3;
+}
+
+#populate-table-button {
+    margin-top: 50px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #6200ea;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+#populate-table-button:hover {
+    background-color: #3700b3;
+}
+
+.table-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+table {
+    width: 50%;
+    border-collapse: collapse;
+    background-color: #1f1f1f;
+    color: #ffffff;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #333333;
+}
+
+a {
+    color: #6200ea;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
