@@ -1,117 +1,149 @@
 -module(node).
--import(node_actions, [join_response/6, keepalive/3,
+-import(node_actions, [join_res/6, keepalive/3,
    backup/3, share_info/3, store_file/1, store_response/6,
    exit_response/4,update_keepalive/4, check_expired_nodes/5, 
-   backup_response/2, find/6, delete/6, suicide/3, update_list/5,
-   join_update/7]).
+   backup_response/4, find/6, delete/6, suicide/3, update_list/5,
+   join_res_handle/7, send_file_to_store/4, receive_file_to_store/3,
+   get_files_res/6, get_files_res_handle/2, check_expired_blacklist/2]).
 -import(routing, [init_routing_table/1]).
 -import(key_gen, [hash_name/1]).
 -import(utils, [get_time/0]).
--import(network, [create_net_node/2]).
--export([start_node/2, start_node/1, start_node/3]).
+-import(network, [start_net/3]).
+-export([start_node/2, start_node/4, start_node/3]).
 
 -define(CHECK_INTERVAL, 15000).
 -define(KEEPALIVE_INTERVAL, 3000).
 -define(EXPIRATION_INTERVAL, 2000).
+-define(BLACKLIST_INTERVAL, 1000).
 -define(L2, 2).
 
-start_node(Name) ->
-  spawn(fun() -> bootstrap_node(Name) end).
-start_node(Name, Starter) ->
-  spawn(fun() -> bootstrap_node(Name, Starter) end).
-start_node(Name, Starter, LeafSet) ->
-  spawn(fun() -> bootstrap_node(Name, Starter, LeafSet) end).
+start_node(Name, NodeName) ->
+  spawn(fun() -> bootstrap_node(Name, NodeName) end).
+start_node(Name, NodeName, Starter) ->
+  spawn(fun() -> bootstrap_node(Name, NodeName, Starter) end).
+start_node(Name, NodeName, Starter, LeafSet) ->
+  spawn(fun() -> bootstrap_node(Name, NodeName, Starter, LeafSet) end).
 
-bootstrap_node(Name) ->
-    bootstrap_node(Name, undefined, {[], []}).
-bootstrap_node(Name, Starter) ->
-    bootstrap_node(Name, Starter, {[], []}).
-bootstrap_node(Name, Starter, LeafSet) ->
-    {SelfName, RoutingTable, KeepAliveList} = init_node(Name),
+
+bootstrap_node(Name, NodeName) ->
+    bootstrap_node(Name, NodeName, undefined, {[], []}).
+bootstrap_node(Name, NodeName, Starter) ->
+    bootstrap_node(Name, NodeName, Starter, {[], []}).
+bootstrap_node(Name, NodeName, Starter, LeafSet) ->
+    {SelfInfo, RoutingTable, KeepAliveList} = init_node(Name, NodeName),
     erlang:send_after(?KEEPALIVE_INTERVAL, self(), send_keepalive),
     erlang:send_after(?CHECK_INTERVAL, self(), check_nodes),
-    {NewRoutingTable, NewLeafSet} = join_net(SelfName, Starter, RoutingTable, LeafSet, ?L2),
-    node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfName).
+    erlang:send_after(?BLACKLIST_INTERVAL, self(), check_blacklist),
+    {NewRoutingTable, NewLeafSet} = join_net(SelfInfo, Starter, RoutingTable, LeafSet, ?L2),
+    node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo, [], []).
 
 
-init_node(Name) ->
+init_node(Name, NodeName) ->
   % Start the node with a name and cookie
-  %Cookie = "pastry",
-  %SelfName = create_net_node(Name, Cookie),
+  Cookie = "pastry",
+  {ok, SelfAddr} = start_net(Name, NodeName, Cookie),
 
   SelfName = Name,
   % Initialize routing table and keepalive list
   RoutingTable = init_routing_table(hash_name(Name)),
   KeepAliveList = [],
-  {SelfName, RoutingTable, KeepAliveList}.
+  {{SelfAddr, SelfName}, RoutingTable, KeepAliveList}.
 
 
 join_net(_, undefined,RoutingTable, LeafSet, _) ->
   {RoutingTable, LeafSet};
-join_net(SelfName, {StarterPid, StarterName}, RoutingTable, {L, R}, L2) ->
+join_net({SelfAddr, SelfName}, {StarterPid, StarterName}, RoutingTable, {L, R}, L2) ->
     Leaves = L++R,
     {NewRoutingTable, NewLeafSet} = update_list(SelfName, [{StarterPid, StarterName} | Leaves], RoutingTable,{L,R}, L2),
-    StarterPid ! {{self(), SelfName}, make_ref(), get_time(), {join}},
+    StarterPid ! {{SelfAddr, SelfName}, make_ref(), get_time(), {join}},
     io:format("Join sent from ~p to ~p~n", [SelfName, StarterName]),
     {NewRoutingTable, NewLeafSet}.
 
 
 % Main loop for the provider node
-node_loop(RoutingTable, LeafSet, KeepAliveList, SelfName) ->
+node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) ->
   receive
     {From, Msg_id, Timestamp, {find, File}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      find(SelfName, From, Msg_id, RoutingTable, LeafSet, File),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfName);
+      find(SelfInfo, From, Msg_id, RoutingTable, LeafSet, File),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {delete, File}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      delete(SelfName, From, Msg_id, RoutingTable, LeafSet, File),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfName);
+      delete(SelfInfo, From, Msg_id, RoutingTable, LeafSet, File),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
     
-    {From, Msg_id, Timestamp, {store, File}} ->
+    {From, Msg_id, Timestamp, {store, FileName}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      store_response(SelfName, From, Msg_id, RoutingTable, LeafSet, File),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfName);
+      store_response(SelfInfo, From, Msg_id, RoutingTable, LeafSet, FileName),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
-    {From, Msg_id, Timestamp, {backup, File}} ->
+    {From, Msg_id, Timestamp, {store_end, FileName}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      backup_response(From, File),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfName);
+      send_file_to_store(SelfInfo, Msg_id, FileName, From),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+    
+    {From, Msg_id, Timestamp, {file_send, FileName, Size}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      receive_file_to_store(SelfInfo, FileName, Size),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {backup, FileName}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      backup_response(SelfInfo, From, Msg_id, FileName),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {join}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      {NewRoutingTable, NewLeafSet} = join_response(SelfName, From, Msg_id, RoutingTable, LeafSet, ?L2),
-      node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfName);
+      {NewRoutingTable, NewLeafSet} = join_res(SelfInfo, From, Msg_id, RoutingTable, LeafSet, ?L2),
+      node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {{FromPid, FromName}, Msg_id, Timestamp, {join_res, Row, SharedLeafSet}} ->
       NewKeepAliveList = update_keepalive({FromPid, FromName}, Msg_id, Timestamp, KeepAliveList),
-      {NewRoutingTable, NewLeafSet} = join_update(SelfName, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2),
-      node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfName);
+      {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2),
+      node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {files_req}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      NewBlackList = get_files_res(SelfInfo, From, Msg_id, RoutingTable, LeafSet, BlackList),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, NewBlackList);
+
+    {From, Msg_id, Timestamp, {files_res, NewFiles}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      NewFilesList = get_files_res_handle(FilesList, NewFiles),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, NewFilesList, BlackList);
 
     {From, _Msg_id, _Timestamp, {exit}} ->
-      {NewRoutingTable, NewLeafSet} = exit_response(SelfName, From, RoutingTable, LeafSet),
-      node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfName);
+      {NewRoutingTable, NewLeafSet} = exit_response(SelfInfo, From, RoutingTable, LeafSet),
+      node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {alive}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfName);
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
 
     send_keepalive ->
-      keepalive(SelfName, RoutingTable, LeafSet),
+      keepalive(SelfInfo, RoutingTable, LeafSet),
       erlang:send_after(?KEEPALIVE_INTERVAL, self(), send_keepalive),
-      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfName);
-
+      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList);
+    
     check_nodes ->
-      {NewKeepAliveList, NewRoutingTable, NewLeafset} = check_expired_nodes(SelfName, KeepAliveList, RoutingTable, LeafSet, ?EXPIRATION_INTERVAL),
+      {NewKeepAliveList, NewRoutingTable, NewLeafset} = check_expired_nodes(SelfInfo, KeepAliveList, RoutingTable, LeafSet, ?EXPIRATION_INTERVAL),
       erlang:send_after(?CHECK_INTERVAL, self(), check_nodes),
-      node_loop(NewRoutingTable, NewLeafset, NewKeepAliveList, SelfName);
+      node_loop(NewRoutingTable, NewLeafset, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
+
+    check_blacklist ->
+      NewBlackList = check_expired_blacklist(BlackList, ?BLACKLIST_INTERVAL),
+      erlang:send_after(?BLACKLIST_INTERVAL, self(), check_blacklist),
+      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo,  FilesList, NewBlackList);
 
     kill_node ->
-      suicide(SelfName, RoutingTable, LeafSet);
+      suicide(SelfInfo, RoutingTable, LeafSet);
+
+    {flood_end, _Msg_Id} ->
+      todo; 
     
     _ ->
-      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfName)
+      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList)
   end.
 
 

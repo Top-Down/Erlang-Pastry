@@ -6,7 +6,8 @@
 -import(utils, [get_time/0]).
 -import(node_actions, [join_response/6, keepalive/3, backup/3, share_info/3, store_file/1, 
   store_response/6, exit_response/4, update_keepalive/4, check_expired_nodes/5, 
-  backup_response/2, find/6, delete/6, suicide/3, full_route/4, join_update/7, update_list/5]).
+  backup_response/2, find/6, delete/6, suicide/3, full_route/4, join_update/7, update_list/5,
+  receive_file_to_store/3]).
 
 -include_lib("eunit/include/eunit.hrl").
 -define(CHECK_INTERVAL, 15000).
@@ -18,9 +19,9 @@
 find_test() ->
     {SelfName, RoutingTable, LeafSet, _, Pids} = setup(),
     print_routing_table(RoutingTable),
-    find(SelfName, {self(), SelfName}, 1, RoutingTable, LeafSet, "node4"),
+    find({self(), SelfName}, {self(), SelfName}, 1, RoutingTable, LeafSet, "node4"),
     receive
-        {find_recv, Name} ->
+        {find_recv, {_, Name}} ->
             io:fwrite("Find_recv: ~p~n", [Name]),
             ?assertEqual("node2", Name);
         Other -> 
@@ -32,7 +33,7 @@ find_test() ->
     end,
 
     receive
-        {find_recv, Name1} ->
+        {find_recv, {_, Name1}} ->
             io:fwrite("Find_recv: ~p~n", [Name1]),
             ?assertEqual("node4", Name1);
         Other1 -> 
@@ -44,9 +45,10 @@ find_test() ->
     end,
     
     receive
-        {file_reply, _Timestamp, {From, File}} -> 
-            io:fwrite("File_reply from ~p: ~p~n", [From, File]),
-            ?assertEqual("node4", File);
+        {From, _Msg_id, _Timestamp, {file_send, FileName, Size}} ->
+            receive_file_to_store({self(), SelfName}, FileName, Size),
+            io:fwrite("File_reply from ~p: ~p~n", [From, FileName]),
+            ?assertEqual("node4", FileName);
         Other2 -> 
             io:fwrite("Unexpected file message: ~p~n", [Other2]),
             ?assert(false),
@@ -98,7 +100,7 @@ check_alive_test() ->
     io:format("NewAliveNodes: ~p~n", [NewAliveNodes]), 
 
     timer:sleep(2000),
-    {NewAliveNodes1, _, _} = check_expired_nodes(SelfName, NewAliveNodes, RoutingTable, LeafSet, ?EXPIRATION_INTERVAL),
+    {NewAliveNodes1, _, _} = check_expired_nodes({self(), SelfName}, NewAliveNodes, RoutingTable, LeafSet, ?EXPIRATION_INTERVAL),
 
     ?assertEqual(0, length(NewAliveNodes1)),
     cleanup(Pids).
@@ -132,7 +134,7 @@ receive_exit(SelfName, RoutingTable, LeafSet) ->
     receive
         {{FromPid, FromName}, _, _Timestamp, {exit}} ->
             io:fwrite("Exit from: ~p~n", [FromName]),
-            exit_response(SelfName, {FromPid, FromName}, RoutingTable, LeafSet);
+            exit_response({self(), SelfName}, {FromPid, FromName}, RoutingTable, LeafSet);
         Other -> 
             io:fwrite("Unexpected find message: ~p~n", [Other]),
             ?assert(false),
@@ -152,7 +154,7 @@ join_test() ->
 
     receive
         {{FromPid, FromName}, Msg_id, _Timestamp, join} ->
-            {NewRoutingTable, _} = join_response(SelfName, {FromPid, FromName}, Msg_id, RoutingTable, LeafSet, ?L2),
+            {NewRoutingTable, _} = join_response({self(), SelfName}, {FromPid, FromName}, Msg_id, RoutingTable, LeafSet, ?L2),
             ?assertEqual(3, length(NewRoutingTable));
         Other -> 
             io:fwrite("Unexpected find message: ~p~n", [Other]),
@@ -163,7 +165,7 @@ join_test() ->
 
     receive
         {_, _, join_end, JoinTable} ->
-            io:fwrite("Unexpected find message: ~p~n", [JoinTable]);
+            io:fwrite("Join end: ~p~n", [JoinTable]);
         Other1 -> 
             io:fwrite("Unexpected find message: ~p~n", [Other1]),
             error(unexpected_message)
@@ -179,7 +181,7 @@ node_join_init(SelfName, {RootPid, RootName}) ->
     LeafSet = {[],[]},
     {NewRoutingTable, NewLeafSet} = update_list(SelfName, [{RootPid, RootName}], RoutingTable, LeafSet, ?L2),
     RootPid ! {{self(), SelfName}, 0, get_time(), join},
-    node_loop(NewRoutingTable, NewLeafSet, [], SelfName).
+    node_loop(NewRoutingTable, NewLeafSet, [], {self(), SelfName}).
     
 
 setup() ->
@@ -233,10 +235,10 @@ node_start(NodeName) ->
     RoutingTable = init_routing_table(Key),
     
     LeafSet = {[], []},
-    node_loop(RoutingTable, LeafSet, [], NodeName).
+    node_loop(RoutingTable, LeafSet, [], {self(), NodeName}).
 
 
-node_init(NodeName, RoutingTable, LeafSet, Routes, Leaves) ->
+node_init({_NodePid, NodeName}, RoutingTable, LeafSet, Routes, Leaves) ->
     RoutingTable1 = lists:foldl(fun(OtherNode, RT) -> 
         add_node(OtherNode, RT)
     end, RoutingTable, Routes),
@@ -276,5 +278,7 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfName) ->
   end.
 
 cleanup(Pids) ->
+    io:fwrite("Pids to kill ~p:~n", [Pids]),
     lists:foreach(fun(Pid) -> exit(Pid, kill) end, Pids),
+
     ok.

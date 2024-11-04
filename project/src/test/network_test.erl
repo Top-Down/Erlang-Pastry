@@ -1,6 +1,6 @@
 -module(network_test).
 
--import(network, [start_net/2, send_message/2]).
+-import(network, [start_net/3, send_message/2]).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -11,7 +11,7 @@ network_test() ->
 
     % Spawn a process to start the second node
 
-    Node2 = spawn(fun() -> node_start({"mailbox1", "node1@localhost"}, {"mailbox2", "node1@localhost"}, 'cookie') end),
+    Node2 = spawn(fun() -> node_start({mailbox1, node1@localhost}, {"mailbox2", "node1@localhost"}, 'cookie') end),
     receive
         {node_started, Node2} -> io:format("Second node started: ~p~n", [Node2]);
         Msg -> io:format("Unexpected msg: ~p~n", [Msg])
@@ -22,7 +22,10 @@ network_test() ->
 
 
 
-node_start(Origin, NodeName, Cookie) ->
-    {ok, Node2} = start_net(NodeName, Cookie),
-        % Send a message from the second node to the first node
-    send_message(Origin, {node_started, Node2}).
+node_start(Origin, {MailBox, NodeName}, Cookie) ->
+    {ok, Node2} = start_net(MailBox, NodeName, Cookie),
+    % Send a message from the second node to the first node
+    io:format("Node2Addr: ~p~n", [Node2]),
+    io:format("Node2 spawned ~n"),
+    send_message(Origin, {node_started, Node2}),
+    io:format("Node2 sent ~n").
