@@ -14,40 +14,45 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import it.unipi.dsmt.javaerlang.JavaErlangConnector;
+
 @WebServlet(name="UploadServlet", value="/upload")
 @MultipartConfig
 public class UploadServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
+    private JavaErlangConnector connector;
+    
+    public UploadServlet() throws IOException {
+    	connector = new JavaErlangConnector(
+    		"hello_server@127.0.0.1",
+    		"CoordinatorMailBox",
+    		"pastry",
+    		"webserver@127.0.0.1",
+    		"WebserverMailBox"
+        );
+    }
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String message;
         try {
             Part filePart = request.getPart("file");
             String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
             String uploadDir = getServletContext().getRealPath("") + File.separator + "uploads";
             
             File uploadDirFile = new File(uploadDir);
-            if (!uploadDirFile.exists()) {
-                uploadDirFile.mkdirs();
-            }
+            if (!uploadDirFile.exists()) uploadDirFile.mkdirs();
             
             String filePath = uploadDir + File.separator + fileName;
             filePart.write(filePath);
 
-            // Read all the binary data from the file
             Path path = Paths.get(filePath);
             byte[] fileBytes = Files.readAllBytes(path);
+            connector.store(fileName, fileBytes);
 
-            // TODO: Pass the binary data to Erlang
-            // OtpErlangBinary binary = new OtpErlangBinary(fileBytes);
-            // MyJavaClass.processFile(fileName, binary);
-
-            message = "File " + filePath + " uploaded and read successfully with size: " + String.valueOf(fileBytes.length);
-        } catch (Exception e) {
-            message = "Upload failed, an error occurred: " + e.getMessage();
+            response.setStatus(HttpServletResponse.SC_OK); // 200 OK
         }
-
-        request.setAttribute("message", message);
-        request.getRequestDispatcher("/upload.jsp").forward(request, response);
+        catch (Exception e) {
+            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR); // 500
+        }
     }
 }

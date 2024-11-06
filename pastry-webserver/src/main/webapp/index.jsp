@@ -16,32 +16,35 @@
         <h1>DISTRIBUTED PASTRY</h1>
     </div>
     
-    <div class="search-container">
-        <form action="search" method="get" class="search-form">
-            <input type="text" name="query" id="query" placeholder="Search...">
-            <button type="submit">Search</button>
-        </form>
+    <div class="outer-search-container">
+	    <div class="search-container">
+		    <input type="text" name="query" id="query" placeholder="ex: file.txt">
+		    <button id="searchButton" onclick="searchFile()">Search</button>
+		    <button id="downloadButton" style="display:none;" onclick="downloadFile()">Download</button>
+		    <button id="deleteButton" style="display:none;" onclick="deleteFile()">Delete</button>
+		</div>
+		<p id="errMsg"></p>
     </div>
-    
+
     <div class="centered-div">
-        <form action="upload" method="post" enctype="multipart/form-data" class="upload-form">
-            <label for="file" id="file-label" class="upload-label">Select a file</label>
-            <input type="file" name="file" id="file" class="upload-input" onchange="updateFileName()">
-            <button type="submit">Upload File</button>
-        </form>
-        <button id="populate-table-button" onclick="populateTable()">Populate Table</button>
-    </div>
+	    <form id="upload-form" class="upload-form">
+	        <label for="file" id="file-label" class="upload-label">Select a file</label>
+	        <input type="file" name="file" id="file" class="upload-input" onchange="updateFileName()">
+	        <button type="button" onclick="updateFile()">Upload File</button>
+	    	<div id="uploadMsg"></div>
+	    </form>
+	    <button id="populate-table-button" onclick="populateTable()">Populate Table</button>
+	</div>
 
     <div class="table-container">
         <table id="name-table">
             <thead>
-                <tr>
-                    <th>Name</th>
-                </tr>
+                <tr></tr>
             </thead>
             <tbody>
             </tbody>
         </table>
+        <p id="errMsgTable"></p>
     </div>
 </body>
 </html>

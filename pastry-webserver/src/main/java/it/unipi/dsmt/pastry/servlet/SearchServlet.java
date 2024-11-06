@@ -7,14 +7,42 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-@WebServlet("/SearchServlet")
+import it.unipi.dsmt.javaerlang.JavaErlangConnector;
+import it.unipi.dsmt.pastry.Common;
+
+@WebServlet(name="SearchServlet", value="/search")
 public class SearchServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
+    private JavaErlangConnector connector;
+	
+	public SearchServlet() throws IOException {
+    	connector = new JavaErlangConnector(
+    		"hello_server@127.0.0.1",
+    		"CoordinatorMailBox",
+    		"pastry",
+    		"webserver@127.0.0.1",
+    		"WebserverMailBox"
+        );
+    }
        
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String query = request.getParameter("query");
-        // TODO: Perform search logic here
-        response.getWriter().append("Search query: ").append(query);
+        String fileName = request.getParameter("query");
+        boolean fileFound = false;
+
+        try {
+            byte[] binaryData = connector.find(fileName);
+            if(binaryData.length > 0) {
+                Common.createFileFromBinaryData(fileName, binaryData);
+                fileFound = true;
+            }
+        }
+        catch (Exception e) {
+        	e.printStackTrace();
+        }
+
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"status\": " + fileFound + "}");
     }
 
 }

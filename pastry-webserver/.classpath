@@ -18,5 +18,9 @@
 			<attribute name="javadoc_location" value="https://jakarta.ee/specifications/servlet/6.0/apidocs/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="C:/Program Files/Erlang OTP/lib/jinterface-1.14.1/priv/OtpErlang.jar"/>
+	<classpathentry kind="lib" path="C:/Users/kille/eclipse-workspace/pastry/libs/jackson-core-2.14.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/kille/eclipse-workspace/pastry/libs/jackson-databind-2.16.1.jar"/>
+	<classpathentry kind="lib" path="C:/Users/kille/eclipse-workspace/pastry/libs/jackson-annotations-2.14.3.jar"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
