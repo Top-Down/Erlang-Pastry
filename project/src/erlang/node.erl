@@ -4,7 +4,8 @@
    exit_response/4,update_keepalive/4, check_expired_nodes/5, 
    backup_response/4, find/6, delete/6, suicide/3, update_list/5,
    join_res_handle/7, send_file_to_store/4, receive_file_to_store/3,
-   get_files_res/6, get_files_res_handle/2, check_expired_blacklist/2]).
+   get_files_res/6, get_files_res_handle/2, check_expired_blacklist/2,
+   get_all_files/7, all_files_res/4]).
 -import(routing, [init_routing_table/1]).
 -import(key_gen, [hash_name/1]).
 -import(utils, [get_time/0]).
@@ -15,7 +16,9 @@
 -define(KEEPALIVE_INTERVAL, 3000).
 -define(EXPIRATION_INTERVAL, 2000).
 -define(BLACKLIST_INTERVAL, 1000).
+-define(FLOOD_INTERVAL, 1000).
 -define(L2, 2).
+
 
 start_node(Name, NodeName) ->
   spawn(fun() -> bootstrap_node(Name, NodeName) end).
@@ -73,10 +76,18 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
       delete(SelfInfo, From, Msg_id, RoutingTable, LeafSet, File),
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
     
-    {From, Msg_id, Timestamp, {store, FileName}} ->
+    {From, Msg_id, Timestamp, {store_pass, FileName}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       store_response(SelfInfo, From, Msg_id, RoutingTable, LeafSet, FileName),
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+
+    {From, Msg_id, _Timestamp, {store, FileName}} ->
+      store_response(SelfInfo, From, Msg_id, RoutingTable, LeafSet, FileName),
+      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList);
+
+    {From, Msg_id, _Timestamp, {get_all_files}} ->
+      NewBlackList = get_all_files(SelfInfo, From, Msg_id, RoutingTable, LeafSet, BlackList, ?FLOOD_INTERVAL),
+      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, NewBlackList);
 
     {From, Msg_id, Timestamp, {store_end, FileName}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
@@ -139,8 +150,9 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     kill_node ->
       suicide(SelfInfo, RoutingTable, LeafSet);
 
-    {flood_end, _Msg_Id} ->
-      todo; 
+    {flood_end, From, Msg_Id} ->
+      all_files_res(SelfInfo, From, Msg_Id, FilesList),
+      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList);
     
     _ ->
       node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList)

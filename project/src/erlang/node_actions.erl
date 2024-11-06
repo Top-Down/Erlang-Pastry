@@ -8,7 +8,8 @@
 -export([join_res/6, keepalive/3, backup/3, share_info/3, receive_file_to_store/3, 
   store_response/6, exit_response/4, update_keepalive/4, check_expired_nodes/5, 
   backup_response/4, find/6, delete/6, suicide/3, full_route/4, join_res_handle/7, update_list/5,
-  send_file_to_store/4, get_files_res/6, get_files_res_handle/2, get_files/5, check_expired_blacklist/2]).
+  send_file_to_store/4, get_files_res/6, get_files_res_handle/2, get_all_files/7, check_expired_blacklist/2,
+  all_files_res/4]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -61,40 +62,39 @@ update_list(SelfName, NodesList, RoutingTable, LeafSet, L2) ->
     {NewRoutingTable, NewLeafSet}.
 
 
-store_response({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, File) ->
-    Key = hash_name(File),
-    case full_route(SelfName, RoutingTable, LeafSet, Key) of
-        route_end -> From ! {{SelfAddr, SelfName}, Msg_id, get_time(), {store_end, File}};
-        {Pid, _} -> Pid ! {From, Msg_id, get_time(), {store, File}}
-    end.
-
-
-find({_SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
+store_response({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
-        route_end ->
-            io:fwrite("Route end ~p~n", [SelfName]),
-            send_file_to_store({_SelfAddr, SelfName}, Msg_id, FileName, From);
-        {Pid, Name} -> 
-            io:fwrite("Next hop ~p: ~p ~n", [Pid, Name]),
-            Pid ! {From, Msg_id, get_time(), {find, FileName}}
+        route_end -> From ! {{SelfAddr, SelfName}, Msg_id, get_time(), {store_end, FileName}};
+        {Pid, _} -> Pid ! {From, Msg_id, get_time(), {store, FileName}}
     end.
 
 
-delete({_SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, File) ->
-    Key = hash_name(File),
+find({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
+    Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
-        route_end -> delete_stored_file({_SelfAddr, SelfName}, File);
-        Id -> Id ! {From, Msg_id, get_time(), {delete, File}}
+        route_end -> send_file_to_store({SelfAddr, SelfName}, Msg_id, FileName, From);
+        {Pid, _Name} -> Pid ! {From, Msg_id, get_time(), {find, FileName}}
     end.
 
-get_files({SelfAddr, SelfName}, RoutingTable, LeafSet, BlackList, FloodTimeout) ->
-    Msg_Id = make_ref(),
+
+delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
+    Key = hash_name(FileName),
+    case full_route(SelfName, RoutingTable, LeafSet, Key) of
+        route_end -> delete_stored_file({SelfAddr, SelfName}, From, Msg_id, FileName);
+        Id -> Id ! {From, Msg_id, get_time(), {delete, FileName}}
+    end.
+
+get_all_files({SelfAddr, SelfName}, From, Msg_Id, RoutingTable, LeafSet, BlackList, FloodTimeout) ->
     NewMsg = {{SelfAddr, SelfName}, Msg_Id, get_time(), {files_req}},
     broadcast({SelfAddr, SelfName}, LeafSet, Msg_Id, NewMsg),
     broadcast_tree({SelfAddr, SelfName}, RoutingTable, Msg_Id, NewMsg),
-    erlang:send_after(FloodTimeout, self(), {flood_end, Msg_Id}),
+    erlang:send_after(FloodTimeout, self(), {flood_end, From, Msg_Id}),
     [{Msg_Id, get_time()} | BlackList].
+
+
+all_files_res(SelfInfo, {FromAddr, _FromName}, Msg_Id, FilesList)->
+    FromAddr ! {SelfInfo, Msg_Id, get_time(), {all_files_res, FilesList}}.
 
 
 get_files_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_Id, RoutingTable, LeafSet, BlackList)->
@@ -123,15 +123,15 @@ receive_file_to_store({_SelfAddr, SelfName}, FileName, Size) ->
 
 send_file_to_store({SelfAddr, SelfName}, Msg_id, FileName, {FromPid, _FromName}) ->
     FilePath = "./files/" ++ SelfName ++ "/"++ FileName,
-    io:fwrite("filpath: ~p~n", [FilePath]),
     {_Res, Size} = get_file_size(FilePath),
     FromPid ! {{SelfAddr, SelfName}, Msg_id, get_time(), {file_send, FileName, Size}},
     send_file(FromPid, FilePath).
     
 
-delete_stored_file({_SelfAddr, SelfName}, FileName) ->
+delete_stored_file({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_Id, FileName) ->
     FilePath = "./files/" ++ SelfName ++ "/"++ FileName,
-    delete_file(FilePath).
+    delete_file(FilePath),
+    FromAddr ! {{SelfAddr, SelfName}, Msg_Id, get_time(), {store_end}}.
 
 
 broadcast(SelfInfo, {L,R}, Msg) ->

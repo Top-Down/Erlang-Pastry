@@ -9,6 +9,7 @@ public class BinaryLengthMismatchException extends RuntimeException {
 
 public class FindMessage extends ErlangMessage {
 
+    @Override
     public void setContent(String fileNameIn) {
         OtpErlangAtom operation = new OtpErlangAtom("find");
         OtpErlangString fileName = new OtpErlangString(fileNameIn);
@@ -19,7 +20,7 @@ public class FindMessage extends ErlangMessage {
         this.msgDTO.setContent(findMsgContent);
     }
 
-
+    @Override
     public OtpErlangBinary getContent(FindMessage findReq) {
         if (!this.checkOperation("find_end")) {
             throw new RuntimeException("Operation check failed.");

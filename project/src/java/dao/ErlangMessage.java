@@ -19,6 +19,9 @@ public class ErlangMessage {
     OtpErlangTuple msg;
     OtpErlangTuple content;
 
+    public abstract void setContent(List<OtpErlangObject> content);
+    public abstract OtpErlangObject getContent(ErlangMessage request);
+
     private void setMailbox(OtpMbox mboxIn){
         this.mbox = mboxIn;
     }
