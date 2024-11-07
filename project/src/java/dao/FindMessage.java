@@ -1,18 +1,18 @@
-package it.unipi.dsmt;
+package it.unipi.dsmt.javaerlang.dao;
 
+import java.util.ArrayList;
 
-public class BinaryLengthMismatchException extends RuntimeException {
-    public BinaryLengthMismatchException(String message) {
-        super(message);
-    }
-}
+import com.ericsson.otp.erlang.*;
 
 public class FindMessage extends ErlangMessage {
 
     @Override
-    public void setContent(String fileNameIn) {
+    public void setContent(ArrayList<OtpErlangObject> content) {
+    	if(content.size() != 1 || !(content.get(0) instanceof OtpErlangString)) {
+            throw new IllegalArgumentException("FindMessage requires a single OtpErlangString as content.");
+        }
         OtpErlangAtom operation = new OtpErlangAtom("find");
-        OtpErlangString fileName = new OtpErlangString(fileNameIn);
+        OtpErlangString fileName = (OtpErlangString) content.get(0);
         OtpErlangTuple findMsgContent = new OtpErlangTuple(new OtpErlangObject[]{
             operation, fileName
         });
@@ -20,22 +20,16 @@ public class FindMessage extends ErlangMessage {
         this.msgDTO.setContent(findMsgContent);
     }
 
+
     @Override
-    public OtpErlangBinary getContent(FindMessage findReq) {
-        if (!this.checkOperation("find_end")) {
-            throw new RuntimeException("Operation check failed.");
-        }
-        if (!this.checkMsgId(findReq)) {
-            throw new RuntimeException("Message ID check failed.");
-        }
+    public OtpErlangBinary getContent(ErlangMessage findReq) {
+        if(!this.checkOperation("find_end")) return new OtpErlangBinary(new byte[0]);
+        if(!this.checkMsgId(findReq)) return new OtpErlangBinary(new byte[0]);
 
         OtpErlangLong size = (OtpErlangLong) this.msgDTO.getContentElement(1);
         OtpErlangBinary file = (OtpErlangBinary) this.msgDTO.getContentElement(2);
 
-        if (file.binaryValue().length == size.longValue()) {
-            return file;
-        } else {
-            throw new BinaryLengthMismatchException("Binary length does not match the specified size.");
-        }
+        if(file.binaryValue().length == size.longValue()) return file;
+        else return new OtpErlangBinary(new byte[0]);
     }
 }

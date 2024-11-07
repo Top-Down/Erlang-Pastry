@@ -1,42 +1,35 @@
-package it.unipi.dsmt;
+package it.unipi.dsmt.javaerlang.dao;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import it.unipi.dsmt.javaee.lab_06.entity.Beer;
-import it.unipi.dsmt.javaee.lab_06.dto.BeerDTO;
-
-import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.ericsson.otp.erlang.*;
+import it.unipi.dsmt.javaerlang.dto.ErlangMessageDTO;
 
-public class ErlangMessage {
+public abstract class ErlangMessage {
     ErlangMessageDTO msgDTO;
     OtpErlangTuple senderInfo;
     OtpMbox mailBox;
     OtpErlangTuple msg;
     OtpErlangTuple content;
-
-    public abstract void setContent(List<OtpErlangObject> content);
+    
+    public abstract void setContent(ArrayList<OtpErlangObject> content);
     public abstract OtpErlangObject getContent(ErlangMessage request);
 
-    private void setMailbox(OtpMbox mboxIn){
-        this.mbox = mboxIn;
+    public void setMailbox(OtpMbox mboxIn){
+        this.mailBox = mboxIn;
     }
 
-    private void wrapMessage(OtpErlangTuple senderAddrIn, String senderNameIn){
-        msgId = new OtpErlangRef();
-        timestamp = new OtpErlangLong(System.currentTimeMillis());
+    public void wrapMessage(OtpNode node, OtpErlangTuple senderAddrIn, String senderNameIn){
+        OtpErlangRef msgId = new OtpErlangRef(node);
+        OtpErlangLong timestamp = new OtpErlangLong(System.currentTimeMillis());
         this.msgDTO = new ErlangMessageDTO(
-            senderAddrIn, 
+            senderAddrIn,
             senderNameIn,
-            timestamp,
-            msgId);
+            msgId,
+            timestamp);
 
+        OtpErlangString senderNameObj = new OtpErlangString(this.msgDTO.getSenderName());
         senderInfo = new OtpErlangTuple(new OtpErlangObject[]{
-            this.msgDTO.getSenderAddr(), this.msgDTO.getSenderName()
+            this.msgDTO.getSenderAddr(), senderNameObj
         });
 
         this.msg = new OtpErlangTuple(new OtpErlangObject[]{
@@ -47,30 +40,30 @@ public class ErlangMessage {
         });
     }
 
-    private void unwrapMessage() {
+    public void unwrapMessage() {
         senderInfo = (OtpErlangTuple) msg.elementAt(0);
-        senderName = (String) this.senderInfo.elementAt(0)stringValue();
-        senderAddr = (OtpErlangTuple) this.senderInfo.elementAt(1)
+        String senderName = (String) this.senderInfo.elementAt(0).toString();
+        OtpErlangTuple senderAddr = (OtpErlangTuple) this.senderInfo.elementAt(1);
 
-        msgId = (OtpErlangRef) msg.elementAt(1);
-        timestamp = (OtpErlangLong) msg.elementAt(2);
+        OtpErlangRef msgId = (OtpErlangRef) msg.elementAt(1);
+        OtpErlangLong timestamp = (OtpErlangLong) msg.elementAt(2);
         content = (OtpErlangTuple) msg.elementAt(3);
 
         this.msgDTO = new ErlangMessageDTO(
-            senderAddr, 
+            senderAddr,
             senderName,
-            timestamp,
             msgId,
-            content);
+            timestamp);
+        this.msgDTO.setContent(content);
     }
 
-    private bool checkOperation(ErlangMessage oldMsg){
-        return oldMsg.msgDTO.getOperation() == this.msgDTO.getOperation();
+    public boolean checkMsgId(ErlangMessage oldMsg) {
+        return oldMsg.msgDTO.getMsgId() == this.msgDTO.getMsgId();
     }
 
-    private bool checkMsgId(String operationIn){
-        OtpErlangString operation = new OtpErlangString(operationIn)
-        return operation == this.msgDTO.getMsgId();
+    public boolean checkOperation(String operationIn) {
+    	OtpErlangAtom operation = new OtpErlangAtom(operationIn);
+        return operation == this.msgDTO.getOperation();
     }
 
     public void sendMessage(String destMailBox, String destName){

@@ -1,13 +1,14 @@
-package it.unipi.dsmt;
+package it.unipi.dsmt.javaerlang.dao;
+
+import java.util.ArrayList;
 
 import com.ericsson.otp.erlang.*;
-import java.util.List;
 
 public class DeleteMessage extends ErlangMessage {
 
     @Override
-    public void setContent(List<OtpErlangObject> content) {
-        if (content.size() != 1 || !(content.get(0) instanceof OtpErlangString)) {
+    public void setContent(ArrayList<OtpErlangObject> content) {
+    	if(content.size() != 1 || !(content.get(0) instanceof OtpErlangString)) {
             throw new IllegalArgumentException("DeleteMessage requires a single OtpErlangString as content.");
         }
         OtpErlangAtom operation = new OtpErlangAtom("delete");
@@ -19,14 +20,13 @@ public class DeleteMessage extends ErlangMessage {
         this.msgDTO.setContent(deleteMsgContent);
     }
 
+
     @Override
-    public OtpErlangObject getContent(ErlangMessage request) {
-        if (!this.checkOperation("delete_end")) {
-            throw new RuntimeException("Operation check failed.");
-        }
-        if (!this.checkMsgId(request)) {
-            throw new RuntimeException("Message ID check failed.");
-        }
-        return this.msgDTO.getContent();
+    public OtpErlangAtom getContent(ErlangMessage deleteReq) {
+    	OtpErlangAtom falseAtom = new OtpErlangAtom("false");
+        if(!this.checkOperation("delete_end")) return falseAtom;
+        if(!this.checkMsgId(deleteReq)) return falseAtom;
+
+        return new OtpErlangAtom("true");
     }
 }

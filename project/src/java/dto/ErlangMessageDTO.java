@@ -1,18 +1,8 @@
-package it.unipi.dsmt;
+package it.unipi.dsmt.javaerlang.dto;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import it.unipi.dsmt.javaee.lab_06.entity.Beer;
-import it.unipi.dsmt.javaee.lab_06.dto.BeerDTO;
+import com.ericsson.otp.erlang.*;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.stream.Collectors;
-
-public class ErlangMessageDTO {    
+public class ErlangMessageDTO {  
     OtpErlangTuple senderAddr;
     String senderName;
     OtpErlangRef msgId;
@@ -64,7 +54,7 @@ public class ErlangMessageDTO {
         this.timestamp = timestamp;
     }
 
-    public OtpErlangAtom getOperation() {
+    public Object getOperation() {
         return content.elementAt(0);
     }
 

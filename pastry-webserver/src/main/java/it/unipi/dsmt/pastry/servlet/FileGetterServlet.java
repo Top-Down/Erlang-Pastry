@@ -16,31 +16,46 @@ import it.unipi.dsmt.pastry.Common;
 @WebServlet(name="FileGetterServlet", value="/allfiles")
 public class FileGetterServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
-    private JavaErlangConnector connector;
     
-    public FileGetterServlet() throws IOException {
-    	connector = new JavaErlangConnector(
-    		"hello_server@127.0.0.1",
-    		"CoordinatorMailBox",
-    		"pastry",
-    		"webserver@127.0.0.1",
-    		"WebserverMailBox"
-        );
+    private static String buildJson(ArrayList<String> names) {
+        StringBuilder jsonBuilder = new StringBuilder();
+        jsonBuilder.append("{\"names\":[");
+        
+        for(int i = 0; i < names.size(); i++) {
+            jsonBuilder.append("\"").append(names.get(i)).append("\"");
+            if(i < names.size() - 1) jsonBuilder.append(", ");
+        }
+        
+        jsonBuilder.append("]}");
+        return jsonBuilder.toString();
     }
-
+    
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        // Initialize the logger
         Logger logger = Logger.getLogger(getClass().getName());
         logger.info("test");
+        
+        long threadId = Thread.currentThread().threadId();
+        JavaErlangConnector connector = new JavaErlangConnector(
+    		"hello_server@127.0.0.1",
+    		"CoordinatorMailBox",
+    		"pastry",
+    		"webserver_" + String.valueOf(threadId) + "@127.0.0.1",
+    		"WebserverMailBox_" + String.valueOf(threadId)
+        );
 
-        //TODO: actually get the content and represent it as JSON
-        connector.find_all();
+        String names = "{\"names\": []}";
+        try {
+        	names = buildJson(connector.find_all());
+		}
+        catch (Exception e) {
+			e.printStackTrace();
+		}
 
-        PrintWriter out = response.getWriter();
-        out.print("{\"names\":[\"test.txt\", \"test2.txt\"]}");
-        out.flush();
+        try(PrintWriter out = response.getWriter()) {
+            out.print(names);
+        }
     }
 }

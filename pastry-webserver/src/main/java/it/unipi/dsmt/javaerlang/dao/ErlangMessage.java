@@ -1,14 +1,18 @@
 package it.unipi.dsmt.javaerlang.dao;
 
-import it.unipi.dsmt.javaerlang.dto.*;
+import java.util.ArrayList;
 import com.ericsson.otp.erlang.*;
+import it.unipi.dsmt.javaerlang.dto.ErlangMessageDTO;
 
-public class ErlangMessage {
+public abstract class ErlangMessage {
     ErlangMessageDTO msgDTO;
     OtpErlangTuple senderInfo;
     OtpMbox mailBox;
     OtpErlangTuple msg;
     OtpErlangTuple content;
+    
+    public abstract void setContent(ArrayList<OtpErlangObject> content);
+    public abstract OtpErlangObject getContent(ErlangMessage request);
 
     public void setMailbox(OtpMbox mboxIn){
         this.mailBox = mboxIn;

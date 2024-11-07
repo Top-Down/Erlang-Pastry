@@ -20,19 +20,17 @@ import it.unipi.dsmt.javaerlang.JavaErlangConnector;
 @MultipartConfig
 public class UploadServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
-    private JavaErlangConnector connector;
     
-    public UploadServlet() throws IOException {
-    	connector = new JavaErlangConnector(
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    	long threadId = Thread.currentThread().threadId();
+        JavaErlangConnector connector = new JavaErlangConnector(
     		"hello_server@127.0.0.1",
     		"CoordinatorMailBox",
     		"pastry",
-    		"webserver@127.0.0.1",
-    		"WebserverMailBox"
+    		"webserver_" + String.valueOf(threadId) + "@127.0.0.1",
+    		"WebserverMailBox_" + String.valueOf(threadId)
         );
-    }
-
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        
         try {
             Part filePart = request.getPart("file");
             String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
