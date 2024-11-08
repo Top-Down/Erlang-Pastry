@@ -1,48 +1,63 @@
 -module(node_actions).
--import(routing, [init_routing_table/1, route_key/2, add_node/2, remove_node/2, get_row/3, update_routing/2, print_routing_table/1]).
--import(key_gen, [hash_name/1, common_hex_prefix/2, hex_length/1]).
+-import(key_gen, [hash_name/1]).
 -import(utils, [get_time/0]).
--import(network, [send_message/2]).
--import(file_handler, [send_file/2, receive_file/2, get_file_size/1, delete_file/1, list_files/1]).
+-import(file_handler, [list_files/1]).
 -import(leaf_set, [closest_node/3, remove_leaf/3, add_leaf/4, update_leaf_set/4]).
 -import(node_actions, [full_route/4, broadcast/3, broadcast/4, broadcast_tree/4,
-    send_file_to_store/4, receive_file_to_store/3, delete_stored_file/4, get_folder_path/1]).
--export([find_store/6, find/6, delete/6, get_files_res/6, get_files_res_handle/2, 
-    get_all_files/7, check_expired_blacklist/2, all_files_res/4]).
+    send_file_to_store/5, save_file_to_store/4, delete_stored_file/5, get_folder_path/1]).
 
--include_lib("kernel/include/file.hrl").
+-export([find_store/6, store/7, find/6, delete/7, get_files_res/6, get_files_res_handle/2, 
+    get_all_files/7, check_expired_blacklist/2, all_files_res/4]).
 
 
 find_store({SelfAddr, SelfName}, {FromAddr, FromName}, Msg_id, RoutingTable, LeafSet, FileName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
         route_end -> FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {store_found, SelfAddr}};
-        {Pid, _} -> Pid ! {{FromAddr, FromName}, Msg_id, get_time(), {store, FileName}}
+        {Pid, _} -> Pid ! {{FromAddr, FromName}, Msg_id, get_time(), {find_store, FileName}}
+    end.
+
+
+store({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_id, FileName, FileData, FileSize, FilesList) ->
+    Result = save_file_to_store({SelfAddr, SelfName}, FileName, FileData, FileSize),
+    case Result of
+        ok ->
+            FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {store_end}},
+            FilesList ++ FileName;
+        {error, Reason} ->
+            FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {error, Reason}},
+            FilesList
     end.
 
 
 find({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
-        route_end -> send_file_to_store({SelfAddr, SelfName}, Msg_id, FileName, From);
+        route_end -> send_file_to_store({SelfAddr, SelfName}, From, find_end, Msg_id, FileName);
         {Pid, _Name} -> Pid ! {From, Msg_id, get_time(), {find, FileName}}
     end.
 
 
-delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
+delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName, FilesList) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
-        route_end -> delete_stored_file({SelfAddr, SelfName}, From, Msg_id, FileName);
-        Id -> Id ! {From, Msg_id, get_time(), {delete, FileName}}
+        route_end -> 
+            delete_stored_file({SelfAddr, SelfName}, From, delete_end, Msg_id, FileName),
+            [File || File <- FilesList, File =/= FileName];
+        Id -> 
+            Id ! {From, Msg_id, get_time(), {delete, FileName}},
+            FilesList
     end.
 
 
 get_all_files({SelfAddr, SelfName}, From, Msg_Id, RoutingTable, LeafSet, BlackList, FloodTimeout) ->
+    FilePath = get_folder_path(SelfName),
+    FilesList = list_files(FilePath),
     NewMsg = {{SelfAddr, SelfName}, Msg_Id, get_time(), {files_req}},
     broadcast({SelfAddr, SelfName}, LeafSet, Msg_Id, NewMsg),
     broadcast_tree({SelfAddr, SelfName}, RoutingTable, Msg_Id, NewMsg),
     erlang:send_after(FloodTimeout, self(), {flood_end, From, Msg_Id}),
-    [{Msg_Id, get_time()} | BlackList].
+    {FilesList, [{Msg_Id, get_time()} | BlackList]}.
 
 
 all_files_res(SelfInfo, {FromAddr, _FromName}, Msg_Id, FilesList)->

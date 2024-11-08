@@ -1,7 +1,7 @@
 -module(file_handler).
 
 -import(network, [send_message/2]).
--export([send_file/2, receive_file/2, get_file_size/1, delete_file/1, list_files/1]).
+-export([store_file/3, get_file_size/1, delete_file/1, list_files/1]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -27,29 +27,13 @@ delete_file(FilePath) ->
     end.
 
 
-send_file(Receiver, FilePath) ->
-    case file:read_file(FilePath) of
-        {ok, Data} ->
-            send_message(Receiver, {file_data, Data});
-        {error, Reason} ->
-            send_message(Receiver, {error, Reason})
-    end.
-
-
-receive_file(FilePath, Size) ->
-    receive
-        {file_data, Data} ->
-            case erlang:size(Data) of
-                Size ->
-                    file:write_file(FilePath, Data),
-                    ok;
-                _ ->
-                    {error, size_mismatch}
-            end;
-        {error, _Reason} ->
-            error
-    after 3000 ->
-        {error, timeout}
+store_file(FilePath, FileData, Size) ->
+    case erlang:size(FileData) of
+        Size ->
+            file:write_file(FilePath, FileData),
+            ok;
+        _ ->
+            {error, size_mismatch}
     end.
 
 

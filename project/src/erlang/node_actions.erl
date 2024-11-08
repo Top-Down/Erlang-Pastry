@@ -3,9 +3,9 @@
 -import(key_gen, [hash_name/1, common_hex_prefix/2, hex_length/1]).
 -import(utils, [get_time/0]).
 -import(network, [send_message/2]).
--import(file_handler, [send_file/2, receive_file/2, get_file_size/1, delete_file/1, list_files/1]).
+-import(file_handler, [send_file/2, store_file/3, get_file_size/1, delete_file/1, list_files/1]).
 -import(leaf_set, [closest_node/3, remove_leaf/3, add_leaf/4, update_leaf_set/4]).
--export([full_route/4, update_list/5, send_file_to_store/4, receive_file_to_store/3, delete_stored_file/4,
+-export([full_route/4, update_list/5, send_file_to_store/5, save_file_to_store/4, delete_stored_file/5,
     broadcast/3, broadcast/4, broadcast_tree/4, broadcast_tree/3, get_folder_path/1, get_file_path/2]).
 
 -include_lib("kernel/include/file.hrl").
@@ -41,22 +41,26 @@ get_file_path(SelfName, FileName) ->
     "./files/" ++ SelfName ++ "/"++ FileName.
 
 
-receive_file_to_store({_SelfAddr, SelfName}, FileName, Size) ->
+save_file_to_store({_SelfAddr, SelfName}, FileName, FileData, FileSize) ->
     FilePath = get_file_path(SelfName, FileName),
-    receive_file(FilePath, Size).
+    store_file(FilePath, FileData, FileSize).
 
 
-send_file_to_store({SelfAddr, SelfName}, Msg_id, FileName, {FromPid, _FromName}) ->
+send_file_to_store({SelfAddr, SelfName}, {FromPid, _FromName}, OpCode, Msg_id, FileName) ->
     FilePath = get_file_path(SelfName, FileName),
     {_Res, Size} = get_file_size(FilePath),
-    FromPid ! {{SelfAddr, SelfName}, Msg_id, get_time(), {file_send, FileName, Size}},
-    send_file(FromPid, FilePath).
-    
+    case file:read_file(FilePath) of
+        {ok, Data} ->
+            FromPid ! {{SelfAddr, SelfName}, Msg_id, get_time(), {OpCode, Data, Size}};
+        {error, Reason} ->
+            FromPid ! {{SelfAddr, SelfName}, Msg_id, get_time(), {error, Reason}}
+    end.
 
-delete_stored_file({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_Id, FileName) ->
+
+delete_stored_file({SelfAddr, SelfName}, {FromAddr, _FromName}, OpCode, Msg_Id, FileName) ->
     FilePath = get_file_path(SelfName, FileName),
     delete_file(FilePath),
-    FromAddr ! {{SelfAddr, SelfName}, Msg_Id, get_time(), {store_end}}.
+    FromAddr ! {{SelfAddr, SelfName}, Msg_Id, get_time(), {OpCode}}.
 
 
 broadcast(SelfInfo, {L,R}, Msg) ->
