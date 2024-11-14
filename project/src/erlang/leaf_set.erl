@@ -5,6 +5,7 @@
 
 -export([add_leaf/4, remove_leaf/3, closest_node/3, update_leaf_set/4]).
 
+
 add_to_list(List, MaxLen, Element, RemoveFun) ->
     case lists:member(Element, List) of
         true ->

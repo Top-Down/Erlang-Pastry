@@ -13,7 +13,6 @@ split_binary_to_hex(<<Hex:4, Rest/bitstring>>, Acc) ->
     split_binary_to_hex(Rest, [<<Hex:4>> | Acc]).
 
 
-
 init_routing_table([], Acc) ->
     Acc;
 init_routing_table([H | T], Acc) ->
@@ -22,7 +21,6 @@ init_routing_table([H | T], Acc) ->
 init_routing_table(<<NodeKeys/bitstring>>) ->
     RevHexKey = split_binary_to_hex(<<NodeKeys/bitstring>>),
     init_routing_table(RevHexKey, {self, self}).
-
 
 
 route_key(Key, Table) ->
@@ -37,6 +35,8 @@ route_key(<<Hex:4, Rest/bitstring>>, Table, <<UsedKeys/bitstring>>) ->
         {_, {self, self}}  -> {{self, self}, <<UsedKeys/bitstring, Hex:4>>};
         {_, NodeInfo}  -> {NodeInfo, <<UsedKeys/bitstring, Hex:4>>}
     end.
+
+
 
 % Function to print the routing table
 print_routing_table(Table) ->

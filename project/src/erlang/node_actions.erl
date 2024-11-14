@@ -55,9 +55,9 @@ save_file_to_store({_SelfAddr, SelfName}, FileName, FileSize, FileData) ->
 
 send_file_to_store({SelfAddr, SelfName}, {FromPid, _FromName}, OpCode, Msg_id, FileName) ->
     FilePath = get_file_path(SelfName, FileName),
-    {_Res, Size} = get_file_size(FilePath),
     case file:read_file(FilePath) of
-        {ok, Data} ->
+        {ok, Data} ->            
+            Size = erlang:byte_size(Data),
             FromPid ! {{SelfAddr, SelfName}, Msg_id, get_time(), {OpCode, FileName, Size, Data}};
         {error, Reason} ->
             FromPid ! {{SelfAddr, SelfName}, Msg_id, get_time(), {error, Reason}}
