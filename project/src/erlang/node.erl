@@ -4,9 +4,9 @@
 -import(web_responses, [find_store/6, store/7, find/6, delete/7, 
   get_files_res/6, get_files_res_handle/2, get_all_files/7, 
   check_expired_blacklist/2, all_files_res/4]).
--import(pastry_actions, [join_res/6, keepalive/3, backup/3, 
+-import(pastry_actions, [join_res/6, keepalive/3, backup/4, 
   share_info/3, exit_response/4, update_keepalive/4, 
-  check_expired_nodes/5, backup_response/4, suicide/3, 
+  check_expired_nodes/5, backup_res/4, suicide/3, 
   join_res_handle/7]).
 -import(routing, [init_routing_table/1]).
 -import(key_gen, [hash_name/1]).
@@ -19,6 +19,8 @@
 -define(EXPIRATION_INTERVAL, 2000).
 -define(BLACKLIST_INTERVAL, 1000).
 -define(FLOOD_INTERVAL, 1000).
+-define(INFO_INTERVAL, 6000).
+-define(RETRY_INTERVAL, 5000).
 -define(L2, 2).
 
 
@@ -39,6 +41,7 @@ bootstrap_node(Name, NodeName, Starter, LeafSet) ->
     erlang:send_after(?KEEPALIVE_INTERVAL, self(), send_keepalive),
     erlang:send_after(?CHECK_INTERVAL, self(), check_nodes),
     erlang:send_after(?BLACKLIST_INTERVAL, self(), check_blacklist),
+    erlang:send_after(?INFO_INTERVAL, self(), share_info),
     {NewRoutingTable, NewLeafSet} = join_net(SelfInfo, Starter, RoutingTable, LeafSet, ?L2),
     node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo, [], []).
 
@@ -85,16 +88,12 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
 
     {From, Msg_id, _Timestamp, {store, FileName, FileSize, FileData}} ->
       NewFilesList = store(SelfInfo, From, Msg_id, FileName, FileSize, FileData, FilesList),
+      backup(SelfInfo, LeafSet, FileName, ?RETRY_INTERVAL),
       node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, NewFilesList, BlackList);
 
     {From, Msg_id, _Timestamp, {get_all_files}} ->
       {NewFilesList, NewBlackList}  = get_all_files(SelfInfo, From, Msg_id, RoutingTable, LeafSet, BlackList, ?FLOOD_INTERVAL),
       node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, NewFilesList, NewBlackList);
-
-    {From, Msg_id, Timestamp, {backup, FileName}} ->
-      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      backup_response(SelfInfo, From, Msg_id, FileName),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
     
     {From, Msg_id, Timestamp, {files_req}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
@@ -105,6 +104,11 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       NewFilesList = get_files_res_handle(FilesList, NewFiles),
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, NewFilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {backup, FileName, FileSize, FileData}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      backup_res(SelfInfo, FileName, FileSize, FileData),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {join}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
@@ -123,6 +127,16 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     {From, Msg_id, Timestamp, {alive}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {info, NodesList}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      update_list(SelfInfo, NodesList, RoutingTable, LeafSet, ?L2),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
+
+    share_info ->
+      share_info(SelfInfo, LeafSet, LeafSet),
+      erlang:send_after(?INFO_INTERVAL, self(), share_info),
+      node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList);
 
     send_keepalive ->
       keepalive(SelfInfo, RoutingTable, LeafSet),

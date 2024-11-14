@@ -27,7 +27,7 @@ delete_file(FilePath) ->
     end.
 
 
-store_file(FilePath, FileData, Size) ->
+store_file(FilePath, Size, FileData) ->
     case erlang:size(FileData) of
         Size ->
             file:write_file(FilePath, FileData),

@@ -28,18 +28,17 @@ start_test() ->
         {node4, node1@localhost}],
 
     % Call find on node1
-    {node2, node1@localhost} ! {SelfInfo, make_ref(), get_time(), {find, "node4"}},
+    {node2, node1@localhost} ! {SelfInfo, make_ref(), get_time(), {store_find, "node4"}},
 
-    receive_find_response("coord", {{node4, node1@localhost}, "node4"}),
+    receive_find_response("coord", {node4, node1@localhost}),
     cleanup(Pids).
 
 
 receive_find_response(SelfName, NodeExpected) ->
     receive
-        {From, _Msg_id, _Timestamp, {file_send, FileName, Size}} ->
-            receive_file_to_store({self(), SelfName}, FileName, Size),
-            io:fwrite("File_reply from ~p: ~p~n", [From, FileName]),
-            ?assertEqual(NodeExpected, From);
+        {{_FromAddr, _FromName}, _Msg_id, _Timestamp, {store_found, StoreAddr}} ->
+            io:fwrite("Store found: ~p~n", [StoreAddr]),
+            ?assertEqual(NodeExpected, StoreAddr);
         Response ->
             io:format("Other response: ~p~n", [Response]),
             receive_find_response(SelfName, NodeExpected)

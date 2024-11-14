@@ -1,4 +1,4 @@
--module(node_actions).
+-module(web_responses).
 -import(key_gen, [hash_name/1]).
 -import(utils, [get_time/0]).
 -import(file_handler, [list_files/1]).
@@ -14,16 +14,16 @@ find_store({SelfAddr, SelfName}, {FromAddr, FromName}, Msg_id, RoutingTable, Lea
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
         route_end -> FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {store_found, SelfAddr}};
-        {Pid, _} -> Pid ! {{FromAddr, FromName}, Msg_id, get_time(), {find_store, FileName}}
+        {Pid, _} -> Pid ! {{FromAddr, FromName}, Msg_id, get_time(), {store_find, FileName}}
     end.
 
 
-store({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_id, FileName, FileData, FileSize, FilesList) ->
-    Result = save_file_to_store({SelfAddr, SelfName}, FileName, FileData, FileSize),
+store({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_id, FileName, FileSize, FileData, FilesList) ->
+    Result = save_file_to_store({SelfAddr, SelfName}, FileName, FileSize, FileData),
     case Result of
         ok ->
             FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {store_end}},
-            FilesList ++ FileName;
+            [FileName | FilesList];
         {error, Reason} ->
             FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {error, Reason}},
             FilesList
@@ -44,8 +44,8 @@ delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName, File
         route_end -> 
             delete_stored_file({SelfAddr, SelfName}, From, delete_end, Msg_id, FileName),
             [File || File <- FilesList, File =/= FileName];
-        Id -> 
-            Id ! {From, Msg_id, get_time(), {delete, FileName}},
+        {Pid, _Name} -> 
+            Pid ! {From, Msg_id, get_time(), {delete, FileName}},
             FilesList
     end.
 
@@ -53,7 +53,7 @@ delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName, File
 get_all_files({SelfAddr, SelfName}, From, Msg_Id, RoutingTable, LeafSet, BlackList, FloodTimeout) ->
     FilePath = get_folder_path(SelfName),
     FilesList = list_files(FilePath),
-    NewMsg = {{SelfAddr, SelfName}, Msg_Id, get_time(), {files_req}},
+    NewMsg = {files_req},
     broadcast({SelfAddr, SelfName}, LeafSet, Msg_Id, NewMsg),
     broadcast_tree({SelfAddr, SelfName}, RoutingTable, Msg_Id, NewMsg),
     erlang:send_after(FloodTimeout, self(), {flood_end, From, Msg_Id}),

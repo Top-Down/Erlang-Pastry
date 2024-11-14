@@ -5,9 +5,10 @@
 -import(network, [send_message/2]).
 -import(file_handler, [send_file/2, receive_file/2, get_file_size/1, delete_file/1, list_files/1]).
 -import(leaf_set, [closest_node/3, remove_leaf/3, add_leaf/4, update_leaf_set/4]).
--import(node_actions, [full_route/4, update_list/5, broadcast/3, broadcast_tree/3, send_file_to_store/4]).
--export([join_res/6, keepalive/3, backup/3, share_info/3, exit_response/4, update_keepalive/4, check_expired_nodes/5, 
-  backup_response/4, suicide/3, join_res_handle/7]).
+-import(node_actions, [full_route/4, update_list/5, broadcast/3, broadcast_tree/3, send_file_to_store/4, get_file_path/2,
+    save_file_to_store/4]).
+-export([join_res/6, keepalive/3, backup/4, share_info/3, exit_response/4, update_keepalive/4, check_expired_nodes/5, 
+  backup_res/4, suicide/3, join_res_handle/7]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -39,18 +40,26 @@ join_res_handle({_SelfAddr, SelfName}, From, Row, {L,R}, RoutingTable, LeafSet, 
     update_list(SelfName, [From | AllNodes], RoutingTable, LeafSet, L2).
 
 
-backup(SelfInfo, DestList, FileName) ->
-    broadcast(SelfInfo, DestList, {backup, FileName}).
+backup({SelfAddr, SelfName}, LeafSet, FileName, RetryInterval) ->
+    FilePath = get_file_path(SelfName, FileName),
+    case file:read_file(FilePath) of
+        {ok, FileData} ->
+            {_Res, FileSize} = get_file_size(FilePath),
+            broadcast({SelfAddr, SelfName}, LeafSet, {backup, FileName, FileSize, FileData});
+        _ ->
+            erlang:send_after(RetryInterval, self(), {retry_backup, FileName})
+    end.
 
-backup_response(SelfName, From, Msg_id, FileName) ->
-    send_file_to_store(SelfName, Msg_id, FileName, From).
+
+backup_res(SelfInfo, FileName, FileSize, FileData) ->
+    save_file_to_store(SelfInfo, FileName, FileSize, FileData).
 
 keepalive(SelfInfo, RoutingTable, LeafSet) ->
     broadcast_tree(SelfInfo, RoutingTable, {alive}),
     broadcast(SelfInfo, LeafSet, {alive}).
 
-share_info(SelfInfo, DestList, Info) ->
-    broadcast(SelfInfo, DestList, {info, Info}).
+share_info(SelfInfo, DestList, {L, R}) ->
+    broadcast(SelfInfo, DestList, {info, L++R}).
 
 
 exit_response({_SelfAddr, SelfName}, From, RoutingTable, LeafSet) ->
