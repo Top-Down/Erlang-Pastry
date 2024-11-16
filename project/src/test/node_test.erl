@@ -16,19 +16,19 @@ start_test() ->
     Node1 = start_node("node1", "node1@localhost"),
     io:fwrite("Node1: ~p~n", [Node1]),
     Node1Info = {{node1, node1@localhost} , "node1"},
-    timer:sleep(300),
+    timer:sleep(100),
     Node2 = start_node("node2","node1@localhost", Node1Info),
     io:fwrite("Node2: ~p~n", [Node2]),
-    timer:sleep(300),
+    timer:sleep(100),
     Node3 = start_node("node3", "node1@localhost", Node1Info),
     io:fwrite("Node3: ~p~n", [Node3]),
-    timer:sleep(300),
+    timer:sleep(100),
     Node4 = start_node("node4","node1@localhost", Node1Info),
     io:fwrite("Node4: ~p~n", [Node4]),
-    timer:sleep(300),
+    timer:sleep(100),
     Node6 = start_node("node6","node1@localhost", Node1Info),
     io:fwrite("Node6: ~p~n", [Node6]),
-    timer:sleep(300),
+    timer:sleep(100),
 
     Pids = [Node1, Node2, Node3, Node4, Node6],
     _Addrs = [
@@ -43,10 +43,12 @@ start_test() ->
 
     receive_find_response("coord", {node4, node1@localhost}),
 
+     timer:sleep(1000),
+
     {node2, node1@localhost} ! kill_node,
 
-    timer:sleep(2500),
-
+    timer:sleep(3000),
+    ?assert(false),
     cleanup(Pids).
 
 

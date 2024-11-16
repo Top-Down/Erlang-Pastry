@@ -4,17 +4,18 @@
 -import(routing, [init_routing_table/1, route_key/2, print_routing_table/1, add_node/2, remove_node/2, get_row/3]).
 -import(leaf_set, [add_leaf/4, remove_leaf/3, closest_node/3, update_leaf_set/4]).
 -import(utils, [get_time/0]).
--import(node_actions, [full_route/4, update_list/5, send_file_to_store/5, save_file_to_store/4, delete_stored_file/5,
-    broadcast/3, broadcast/4, broadcast_tree/4, broadcast_tree/3, get_folder_path/1, get_file_path/2]).
--import(pastry_actions, [join_res/6, keepalive/3, backup/4, share_info/3, exit_response/6, update_keepalive/4, check_expired_nodes/5, 
-  backup_res/5, suicide/3, join_res_handle/8, backup_update/5, backup_find/7, backup_found/4, new_leaf_backup/5,
-  info_res/5, remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/3, backup_remove/3, update_leaf_backups/5]).
+-import(node_actions, [full_route/4, update_list/5, broadcast/4, broadcast_leaf/4, broadcast_leaf/3, 
+    broadcast_routing/4, broadcast_routing/3, send_file_to_store/4, get_file_path/2,
+    save_file_to_store/4, get_backup_folder_path/2, get_backup_path/3, get_folder_path/1]).
+-import(backup_actions, [backup/3, backup_res/5, backup_update/4, backup_find/7, backup_found/4, new_leaf_backup/4,
+    remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/3, backup_remove/3, update_leaf_backups/4]).
+-import(pastry_actions, [join_res/6, keepalive/3, share_info/3, exit_response/5, update_keepalive/4, check_expired_nodes/5, 
+    suicide/3, join_res_handle/7, info_res/5, send_alive_res/3]).
 
 -include_lib("eunit/include/eunit.hrl").
 -define(CHECK_INTERVAL, 15000).
 -define(KEEPALIVE_INTERVAL, 300).
 -define(EXPIRATION_INTERVAL, 1000).
--define(RETRY_INTERVAL, 3000).
 -define(INFO_INTERVAL, 2000).
 -define (L2, 4).
 
@@ -81,7 +82,7 @@ receive_keepalive(KeepAliveList) ->
     end.
 
 
-join_testicle() ->
+join_test() ->
     {SelfName, RoutingTableOld, LeafSet, _, Pids} = setup(),
     Node1 = self(),
     Node4 = {lists:nth(3, Pids), "node4"},
@@ -95,8 +96,7 @@ join_testicle() ->
 
     receive
         {{FromPid, FromName}, Msg_id, _Timestamp, {join}} ->
-            {NewRoutingTable, _} = join_res({self(), SelfName}, {FromPid, FromName}, Msg_id, RoutingTable, LeafSet, ?L2),
-            ?assertEqual(3, length(NewRoutingTable));
+            {{_, _NewRoutingTable}, _} = join_res({self(), SelfName}, {FromPid, FromName}, Msg_id, RoutingTable, LeafSet, ?L2);
         Other -> 
             io:fwrite("Unexpected find message: ~p~n", [Other]),
             error(unexpected_message)
@@ -126,8 +126,7 @@ join_testicle() ->
 
     timer:sleep(1000),
     cleanup([Node5 | Pids]),
-    cleanup_mailbox(),
-    ?assert(false).
+    cleanup_mailbox().
 
 
 node_join_init(SelfName, {RootPid, RootName}) ->
@@ -140,13 +139,11 @@ node_join_init(SelfName, {RootPid, RootName}) ->
 
 exit_test() ->
     {SelfName, RoutingTable, LeafSet, _, Pids} = setup(),
-    print_routing_table(RoutingTable),
     Node2 = lists:nth(1, Pids),
     Node2 ! kill_node,
-    {RoutingTable1, _} = receive_exit(SelfName, RoutingTable, LeafSet),
-    ?assertEqual(1, length(RoutingTable1)),
+    {{_, RoutingTable1}, _} = receive_exit(SelfName, RoutingTable, LeafSet),
+    ?assertEqual(0, length(lists:nth(1, RoutingTable1))),
     timer:sleep(500),
-    ?assert(false),
     NewPids = tl(Pids),
     cleanup(NewPids),
     cleanup_mailbox(),
@@ -156,8 +153,9 @@ receive_exit(SelfName, RoutingTable, LeafSet) ->
     receive
         {{FromPid, FromName}, _, _Timestamp, {exit}} ->
             io:fwrite("Exit from: ~p~n", [FromName]),
-            {NewRoutingTable, NewLeafSet} = exit_response({self(), SelfName}, {FromPid, FromName}, RoutingTable, LeafSet, ?L2, ?RETRY_INTERVAL),
-            backup_update({self(), SelfName}, {FromPid, FromName}, NewRoutingTable, NewLeafSet, ?RETRY_INTERVAL); 
+            {NewRoutingTable, NewLeafSet} = exit_response({self(), SelfName}, {FromPid, FromName}, RoutingTable, LeafSet, ?L2 ),
+            backup_update({self(), SelfName}, {FromPid, FromName}, NewRoutingTable, NewLeafSet ),
+            {NewRoutingTable, NewLeafSet};
         Other -> 
             io:fwrite("Unexpected find message: ~p~n", [Other]),
             ?assert(false),
@@ -251,12 +249,12 @@ node_loop(RoutingTable, LeafSet, KeepAliveList,  SelfInfo, FatherPid) ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = join_res(SelfInfo, From, Msg_id, RoutingTable, LeafSet, ?L2),
       io:fwrite("~p - Leafset after join ~p:~n", [SelfInfo, NewLeafSet]),
-      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, [From], ?RETRY_INTERVAL),
+      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, [From] ),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList,  SelfInfo, FatherPid);
 
     {{FromPid, FromName}, Msg_id, Timestamp, {join_res, Row, SharedLeafSet}} ->
       NewKeepAliveList = update_keepalive({FromPid, FromName}, Msg_id, Timestamp, KeepAliveList),
-      {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2, ?RETRY_INTERVAL),
+      {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2),
       io:fwrite("~p - Leafset after join res ~p:~n", [SelfInfo, NewLeafSet]),
       FatherPid ! {SelfInfo, 0, join_end, FromName},
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FatherPid);
@@ -282,8 +280,8 @@ node_loop(RoutingTable, LeafSet, KeepAliveList,  SelfInfo, FatherPid) ->
       node_loop(RoutingTable, LeafSet, NewKeepAliveList,  SelfInfo, FatherPid);
 
     {From, _Msg_id, _Timestamp, {exit}} ->
-      {NewRoutingTable, NewLeafSet} = exit_response(SelfInfo, From, RoutingTable, LeafSet, ?L2, ?RETRY_INTERVAL),
-      backup_update(SelfInfo, From, RoutingTable, LeafSet, ?RETRY_INTERVAL),
+      {NewRoutingTable, NewLeafSet} = exit_response(SelfInfo, From, RoutingTable, LeafSet, ?L2 ),
+      backup_update(SelfInfo, From, RoutingTable, LeafSet ),
       node_loop(NewRoutingTable, NewLeafSet, KeepAliveList,  SelfInfo, FatherPid);
 
     {From, Msg_id, Timestamp, {alive}} ->
@@ -293,7 +291,7 @@ node_loop(RoutingTable, LeafSet, KeepAliveList,  SelfInfo, FatherPid) ->
     {From, Msg_id, Timestamp, {info, NodesList}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = info_res(SelfInfo, NodesList, RoutingTable, LeafSet, ?L2),
-      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, NodesList, ?RETRY_INTERVAL),
+      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, NodesList ),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList,  SelfInfo, FatherPid);
 
     start_keepalive ->

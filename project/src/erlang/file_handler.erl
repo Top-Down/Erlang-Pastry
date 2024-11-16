@@ -64,7 +64,10 @@ move_file(SrcPath, DestPath) ->
 
 
 list_files(Path) ->
-    {ok, Items} = file:list_dir(Path),
-    Items.
+    io:format("list all files path: ~p~n", [Path]),
+    case file:list_dir(Path) of
+        {ok, Items} -> Items;
+        _ -> []
+    end.
 
 

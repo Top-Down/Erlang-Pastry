@@ -4,15 +4,13 @@
 -import(web_responses, [find_store/6, store/7, find/6, delete/7, 
   get_files_res/6, get_files_res_handle/2, get_all_files/7, 
   check_expired_blacklist/2, all_files_res/4]).
--import(pastry_actions, [join_res/6, keepalive/3, backup/3, 
-  share_info/3, exit_response/5, update_keepalive/4, 
-  check_expired_nodes/5, backup_res/5, suicide/3, 
-  join_res_handle/7, backup_update/4, backup_find/7, 
-  backup_found/4, new_leaf_backup/4,
-  info_res/5, remove_backup_folder/2, 
-  remove_backup_file/3, old_leaf_backup/3, 
-  backup_remove/3, update_leaf_backups/4,
-  send_alive_res/3]).
+-import(pastry_actions, [join_res/6, keepalive/3, share_info/3, 
+    exit_response/5, update_keepalive/4, check_expired_nodes/5, 
+    suicide/3, join_res_handle/7, info_res/5, send_alive_res/3]).
+-import(backup_actions, [backup/3, backup_res/5, backup_update/4, 
+    backup_find/7, backup_found/4, new_leaf_backup/4,
+    remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/3, 
+    backup_remove/3, update_leaf_backups/4]).
 -import(routing, [init_routing_table/1]).
 -import(key_gen, [hash_name/1]).
 -import(utils, [get_time/0]).
@@ -47,7 +45,6 @@ bootstrap_node(Name, NodeName, Starter, LeafSet) ->
     erlang:send_after(?BLACKLIST_INTERVAL, self(), check_blacklist),
     erlang:send_after(?INFO_INTERVAL, self(), share_info),
     {NewRoutingTable, NewLeafSet} = join_net(SelfInfo, Starter, RoutingTable, LeafSet, ?L2),
-    io:fwrite("NodeInfo ~p~n", [SelfInfo]),
     node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo, [], []).
 
 
@@ -120,11 +117,13 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = join_res(SelfInfo, From, Msg_id, RoutingTable, LeafSet, ?L2),
       update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, [From]),
+      io:fwrite("~p: Join from ~p and leafset: ~p ~n", [SelfInfo, From, NewLeafSet]),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {{FromPid, FromName}, Msg_id, Timestamp, {join_res, Row, SharedLeafSet}} ->
       NewKeepAliveList = update_keepalive({FromPid, FromName}, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2),
+      io:fwrite("~p: Join Res from ~p and leafset: ~p ~n", [SelfInfo, FromName, NewLeafSet]),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
     
     {From, Msg_id, Timestamp, {backup_find, FileName, BackupName}} ->

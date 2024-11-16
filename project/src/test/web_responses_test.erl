@@ -226,11 +226,6 @@ setup() ->
 node_start(NodeName) ->
     <<Key/bitstring>> = hash_name(NodeName),
     RoutingTable = init_routing_table(Key),
-
-    case NodeName of
-        "node2" -> print_routing_table(RoutingTable);
-        _ -> ok
-    end,
     
     LeafSet = {[], []},
     node_loop(RoutingTable, LeafSet,{self(), NodeName}, [], []).

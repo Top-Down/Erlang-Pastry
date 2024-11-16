@@ -8,13 +8,13 @@ EBIN_DIR = ebin
 SRC_FILES = $(SRC_DIR)/key_gen.erl $(SRC_DIR)/network.erl $(SRC_DIR)/leaf_set.erl \
             $(SRC_DIR)/routing.erl $(SRC_DIR)/node_actions.erl $(SRC_DIR)/node.erl $(SRC_DIR)/utils.erl \
 			$(SRC_DIR)/file_handler.erl $(SRC_DIR)/pastry_actions.erl $(SRC_DIR)/web_responses.erl \
-			$(SRC_DIR)/exit_test.erl 
+			$(SRC_DIR)/backup_actions.erl 
 
 # Test files
 TEST_FILES = $(TEST_DIR)/key_gen_test.erl $(TEST_DIR)/network_test.erl $(TEST_DIR)/leaf_set_test.erl \
              $(TEST_DIR)/routing_test.erl $(TEST_DIR)/node_actions_test.erl $(TEST_DIR)/node_test.erl \
 			 $(TEST_DIR)/file_handler_test.erl $(TEST_DIR)/web_responses_test.erl $(TEST_DIR)/pastry_actions_test.erl \
-			 $(SRC_DIR)/exit_test.erl
+			 $(SRC_DIR)/exit_test.erl 
 
 # Compiled files
 BEAM_FILES = $(SRC_FILES:$(SRC_DIR)/%.erl=$(EBIN_DIR)/%.beam)
@@ -49,7 +49,10 @@ $(EBIN_DIR)/node_actions.beam: $(SRC_DIR)/node_actions.erl $(EBIN_DIR)/leaf_set.
 $(EBIN_DIR)/web_responses.beam: $(SRC_DIR)/web_responses.erl $(EBIN_DIR)/node_actions.beam
 	$(ERLC) -o $(EBIN_DIR) $<
 
-$(EBIN_DIR)/pastry_actions.beam: $(SRC_DIR)/pastry_actions.erl $(EBIN_DIR)/node_actions.beam
+$(EBIN_DIR)/backup_actions.beam: $(SRC_DIR)/backup_actions.erl $(EBIN_DIR)/node_actions.beam
+	$(ERLC) -o $(EBIN_DIR) $<
+
+$(EBIN_DIR)/pastry_actions.beam: $(SRC_DIR)/pastry_actions.erl $(EBIN_DIR)/backup_actions.beam
 	$(ERLC) -o $(EBIN_DIR) $<
 
 $(EBIN_DIR)/node.beam: $(SRC_DIR)/node.erl $(EBIN_DIR)/pastry_actions.beam $(EBIN_DIR)/web_responses.beam
