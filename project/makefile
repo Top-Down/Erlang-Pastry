@@ -1,5 +1,5 @@
 # Variables
-ERLC = erlc
+ERLC = erlc +debug_info
 SRC_DIR = src/erlang
 TEST_DIR = src/test
 EBIN_DIR = ebin
@@ -37,7 +37,7 @@ $(EBIN_DIR)/network.beam: $(SRC_DIR)/network.erl
 $(EBIN_DIR)/leaf_set.beam: $(SRC_DIR)/leaf_set.erl $(EBIN_DIR)/key_gen.beam 
 	$(ERLC) -o $(EBIN_DIR) $<
 
-$(EBIN_DIR)/routing.beam: $(SRC_DIR)/routing.erl $(EBIN_DIR)/key_gen.beam $(EBIN_DIR)/network.beam 
+$(EBIN_DIR)/routing.beam: $(SRC_DIR)/routing.erl $(EBIN_DIR)/key_gen.beam $(EBIN_DIR)/network.beam $(EBIN_DIR)/utils.beam
 	$(ERLC) -o $(EBIN_DIR) $<
 
 $(EBIN_DIR)/file_handler.beam: $(SRC_DIR)/file_handler.erl $(EBIN_DIR)/network.beam 

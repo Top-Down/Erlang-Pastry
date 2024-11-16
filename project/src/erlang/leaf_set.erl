@@ -24,6 +24,9 @@ add_to_list(List, MaxLen, Element, RemoveFun) ->
 add_leaf(LeafSet, _, {_NodePid, NodeName}, SelfName) 
   when NodeName =:= SelfName -> 
     LeafSet;
+add_leaf(LeafSet, _, {_NodePid, NodeName}, _SelfName) 
+  when not is_list(NodeName) -> 
+    LeafSet;
 add_leaf({Left, Right}, L2, {NodePid, NodeName}, SelfName) ->
     NodeKey = hash_name(NodeName),
     MyKey = hash_name(SelfName),
@@ -39,7 +42,9 @@ add_leaf({Left, Right}, L2, {NodePid, NodeName}, SelfName) ->
     end.
 
 
-
+remove_leaf(LeafSet, {_NodePid, NodeName}, _SelfName) 
+  when not is_list(NodeName) -> 
+    LeafSet;
 remove_leaf({Left, Right}, {NodePid, NodeName}, SelfName) ->
     NodeKey = hash_name(NodeName),
     MyKey = hash_name(SelfName),

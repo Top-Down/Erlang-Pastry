@@ -1,7 +1,7 @@
 -module(key_gen).
 
 -export([hash_name/1, find_longest_shared_prefix/2, shared_prefix/2, compare_prefix/4, find_closest_id/2, 
-    find_difference/2, find_closest/4, common_hex_prefix/2, hex_length/1]).
+    find_difference/2, find_closest/4, common_hex_prefix/2, hex_length/1, get_column/2]).
 
 % Function to hash a single file name
 hash_name(Name) ->
@@ -22,6 +22,12 @@ shared_prefix(_, _, Acc, Length) -> {Length, Acc}.
 common_hex_prefix(Bin1, Bin2) ->
     {BitLength, _} = shared_prefix(Bin1, Bin2, <<>>, 0),
     BitLength div 4.
+
+
+get_column(<<Hex:4, _/bitstring>>, 0) ->
+    <<Hex:4>>;
+get_column(<<_Hex:4, Rest/bitstring>>, RowId) ->
+    get_column(<<Rest/bitstring>>, RowId - 1).
 
 
 hex_length(Bitstring) ->

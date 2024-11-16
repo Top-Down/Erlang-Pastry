@@ -4,26 +4,27 @@
 -import(web_responses, [find_store/6, store/7, find/6, delete/7, 
   get_files_res/6, get_files_res_handle/2, get_all_files/7, 
   check_expired_blacklist/2, all_files_res/4]).
--import(pastry_actions, [join_res/6, keepalive/3, backup/4, 
-  share_info/3, exit_response/6, update_keepalive/4, 
+-import(pastry_actions, [join_res/6, keepalive/3, backup/3, 
+  share_info/3, exit_response/5, update_keepalive/4, 
   check_expired_nodes/5, backup_res/5, suicide/3, 
-  join_res_handle/8, backup_update/5, backup_find/7, 
-  backup_found/4, new_leaf_backup/4, info_res/5,
-  remove_backup_folder/2, remove_backup_file/3,
-  backup_remove/3, update_leaf_backups/5]).
+  join_res_handle/7, backup_update/4, backup_find/7, 
+  backup_found/4, new_leaf_backup/4,
+  info_res/5, remove_backup_folder/2, 
+  remove_backup_file/3, old_leaf_backup/3, 
+  backup_remove/3, update_leaf_backups/4,
+  send_alive_res/3]).
 -import(routing, [init_routing_table/1]).
 -import(key_gen, [hash_name/1]).
 -import(utils, [get_time/0]).
 -import(network, [start_net/3]).
 -export([start_node/2, start_node/4, start_node/3]).
 
--define(CHECK_INTERVAL, 15000).
--define(KEEPALIVE_INTERVAL, 3000).
--define(EXPIRATION_INTERVAL, 2000).
+-define(CHECK_INTERVAL, 4000).
+-define(KEEPALIVE_INTERVAL, 1000).
+-define(EXPIRATION_INTERVAL, 3000).
 -define(BLACKLIST_INTERVAL, 1000).
 -define(FLOOD_INTERVAL, 1000).
--define(INFO_INTERVAL, 6000).
--define(RETRY_INTERVAL, 5000).
+-define(INFO_INTERVAL, 1000).
 -define(L2, 2).
 
 
@@ -46,6 +47,7 @@ bootstrap_node(Name, NodeName, Starter, LeafSet) ->
     erlang:send_after(?BLACKLIST_INTERVAL, self(), check_blacklist),
     erlang:send_after(?INFO_INTERVAL, self(), share_info),
     {NewRoutingTable, NewLeafSet} = join_net(SelfInfo, Starter, RoutingTable, LeafSet, ?L2),
+    io:fwrite("NodeInfo ~p~n", [SelfInfo]),
     node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo, [], []).
 
 
@@ -92,7 +94,7 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
 
     {From, Msg_id, _Timestamp, {store, FileName, FileSize, FileData}} ->
       NewFilesList = store(SelfInfo, From, Msg_id, FileName, FileSize, FileData, FilesList),
-      backup(SelfInfo, LeafSet, FileName, ?RETRY_INTERVAL),
+      backup(SelfInfo, LeafSet, FileName),
       node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, NewFilesList, BlackList);
 
     {From, Msg_id, _Timestamp, {get_all_files}} ->
@@ -117,12 +119,12 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     {From, Msg_id, Timestamp, {join}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = join_res(SelfInfo, From, Msg_id, RoutingTable, LeafSet, ?L2),
-      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, [From], ?RETRY_INTERVAL),
+      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, [From]),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {{FromPid, FromName}, Msg_id, Timestamp, {join_res, Row, SharedLeafSet}} ->
       NewKeepAliveList = update_keepalive({FromPid, FromName}, Msg_id, Timestamp, KeepAliveList),
-      {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2, ?RETRY_INTERVAL),
+      {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
     
     {From, Msg_id, Timestamp, {backup_find, FileName, BackupName}} ->
@@ -146,18 +148,23 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {From, _Msg_id, _Timestamp, {exit}} ->
-      {NewRoutingTable, NewLeafSet} = exit_response(SelfInfo, From, RoutingTable, LeafSet, ?L2, ?RETRY_INTERVAL),
-      backup_update(SelfInfo, From, NewRoutingTable, NewLeafSet, ?RETRY_INTERVAL),
+      {NewRoutingTable, NewLeafSet} = exit_response(SelfInfo, From, RoutingTable, LeafSet, ?L2),
+      backup_update(SelfInfo, From, NewRoutingTable, NewLeafSet),
       node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {alive}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      send_alive_res(SelfInfo, From, Msg_id),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {alive_res}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {info, NodesList}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = info_res(SelfInfo, NodesList, RoutingTable, LeafSet, ?L2),
-      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, NodesList, ?RETRY_INTERVAL),
+      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, NodesList),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
 
     share_info ->
@@ -173,7 +180,7 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     check_nodes ->
       {NewKeepAliveList, NewRoutingTable, NewLeafset} = check_expired_nodes(SelfInfo, KeepAliveList, RoutingTable, LeafSet, ?EXPIRATION_INTERVAL),
       NodesList = [Node || {Node, _Timestamp} <- NewKeepAliveList, not lists:keymember(Node, 1, KeepAliveList)],
-      update_leaf_backups(SelfInfo, NewLeafset, LeafSet, NodesList, ?RETRY_INTERVAL),
+      update_leaf_backups(SelfInfo, NewLeafset, LeafSet, NodesList),
       erlang:send_after(?CHECK_INTERVAL, self(), check_nodes),
       node_loop(NewRoutingTable, NewLeafset, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
 

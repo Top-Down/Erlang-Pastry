@@ -7,9 +7,10 @@
 -import(leaf_set, [closest_node/3, remove_leaf/3, add_leaf/4, update_leaf_set/4]).
 -import(node_actions, [full_route/4, update_list/5, broadcast/3, broadcast_tree/3, send_file_to_store/4, get_file_path/2,
     save_file_to_store/4, get_backup_folder_path/2, get_backup_path/3, get_folder_path/1]).
--export([join_res/6, keepalive/3, backup/4, share_info/3, exit_response/6, update_keepalive/4, check_expired_nodes/5, 
-  backup_res/5, suicide/3, join_res_handle/8, backup_update/5, backup_find/7, backup_found/4, new_leaf_backup/5,
-  info_res/5, remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/3, backup_remove/3, update_leaf_backups/5]).
+-export([join_res/6, keepalive/3, backup/3, share_info/3, exit_response/5, update_keepalive/4, check_expired_nodes/5, 
+  backup_res/5, suicide/3, join_res_handle/7, backup_update/4, backup_find/7, backup_found/4, new_leaf_backup/4,
+  info_res/5, remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/3, backup_remove/3, update_leaf_backups/4,
+  send_alive_res/3]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -21,11 +22,15 @@ join_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_id, RoutingTable, LeafSe
     {_, UsedKeys} = route_key(Key, RoutingTable),
     I = hex_length(UsedKeys),
     Row = get_row(hash_name(SelfName), RoutingTable, I),
+
+    io:fwrite("Join res at ~p t ~p with row ~p ~n", [SelfName, {FromPid, FromName}, Row]),
     FromPid ! {{SelfAddr, SelfName}, Msg_id, get_time(), {join_res, Row, LeafSet}},
 
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
         route_end -> route_end;
-        {Pid, _} -> Pid ! {{FromPid, FromName}, Msg_id, get_time(), {join}}
+        {Pid, NextName} -> 
+            io:fwrite("Join forward at ~p t ~p ~n", [SelfName, {Pid, NextName}]),
+            Pid ! {{FromPid, FromName}, Msg_id, get_time(), {join}}
     end,
 
     RoutingTable1 = add_node({FromPid, FromName}, RoutingTable),
@@ -33,25 +38,25 @@ join_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_id, RoutingTable, LeafSe
     {RoutingTable1, LeafSet1}.
 
 
-join_res_handle({SelfAddr, SelfName}, From, Row, {L,R}, RoutingTable, LeafSet, L2, RetryInterval) ->
+join_res_handle({SelfAddr, SelfName}, From, Row, {L,R}, RoutingTable, LeafSet, L2) ->
     NodesList = [V || {_, V} <- Row],
     LeavesList = L ++ R,
     AllLeaves = [S || {_, S} <- LeavesList],
     AllNodes = NodesList ++ AllLeaves,
     {NewRoutingTable, NewLeafSet} = update_list(SelfName, [From | AllNodes], RoutingTable, LeafSet, L2),
 
-    update_leaf_backups({SelfAddr, SelfName}, NewLeafSet, LeafSet, [From | AllNodes], RetryInterval),
+    update_leaf_backups({SelfAddr, SelfName}, NewLeafSet, LeafSet, [From | AllNodes]),
     {NewRoutingTable, NewLeafSet}.
 
 
-backup({SelfAddr, SelfName}, LeafSet, FileName, RetryInterval) ->
+backup({SelfAddr, SelfName}, LeafSet, FileName) ->
     FilePath = get_file_path(SelfName,  FileName),
     case file:read_file(FilePath) of
         {ok, FileData} ->
             {_Res, FileSize} = get_file_size(FilePath),
             broadcast({SelfAddr, SelfName}, LeafSet, {backup, FileName, FileSize, FileData});
         _ ->
-            erlang:send_after(RetryInterval, self(), {retry_backup, FileName})
+            ok
     end.
 
 
@@ -64,7 +69,7 @@ backup_res({_SelfAddr, SelfName}, {_FromAddr, FromName}, FileName, FileSize, Fil
     store_file(FilePath, FileSize, FileData).
 
 
-backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet, RetryInterval) ->
+backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet) ->
     BackupFolder = get_backup_folder_path(SelfName, FromName),
     Files = list_files(BackupFolder),
     lists:foreach(fun(FileName) ->
@@ -74,7 +79,7 @@ backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet
                 DestPath = get_file_path(SelfName, FileName),
                 SourcePath = get_backup_path(SelfName, FromName, FileName),
                 move_file(SourcePath, DestPath),
-                backup({SelfAddr, SelfName}, LeafSet, DestPath, RetryInterval);
+                backup({SelfAddr, SelfName}, LeafSet, DestPath);
             {Pid, _} -> 
                 Pid ! {{SelfAddr, SelfName}, make_ref(), get_time(), {backup_find, FileName, FromName}}
         end
@@ -96,7 +101,7 @@ backup_found({_SelfAddr, SelfName}, {_FromAddr, FromName}, FileName, BackupName)
     move_file(SourcePath, DestPath).
 
 
-backup_folder_to({SelfAddr, SelfName}, {FromAddr, FromName}, RetryInterval) ->
+backup_folder_to({SelfAddr, SelfName}, {FromAddr, _FromName}) ->
     FolderPath = get_folder_path(SelfName),
     Files = list_files(FolderPath),
     lists:foreach(fun(FileName) ->
@@ -106,14 +111,16 @@ backup_folder_to({SelfAddr, SelfName}, {FromAddr, FromName}, RetryInterval) ->
                 FileSize = byte_size(FileData),
                 FromAddr ! {{SelfAddr, SelfName}, make_ref(), get_time(), {backup, FileName, FileSize, FileData}};
             {error, _Reason} ->
-                erlang:send_after(RetryInterval, self(), {retry_backup, FileName, {FromAddr, FromName}})
+                error
         end
     end, Files).
 
 
-update_leaf_backups(SelfInfo, NewLeafSet, {OldL, OldR}, NewNodes, RetryInterval) ->
+update_leaf_backups(SelfInfo, NewLeafSet, {OldL, OldR}, NewNodes) ->
+
+    io:fwrite("~p: Add nodes: ~p~n", [SelfInfo, NewNodes]),
     lists:foreach(fun(Node) ->
-        new_leaf_backup(SelfInfo, Node, NewLeafSet, {OldL, OldR}, RetryInterval)
+        new_leaf_backup(SelfInfo, Node, NewLeafSet, {OldL, OldR})
     end, NewNodes),
 
     OldList = OldL ++ OldR,
@@ -123,14 +130,14 @@ update_leaf_backups(SelfInfo, NewLeafSet, {OldL, OldR}, NewNodes, RetryInterval)
     end, OldNodes).
 
 
-new_leaf_backup({SelfAddr, SelfName}, {FromAddr, FromName}, {L, R}, {OldL, OldR}, RetryInterval) ->
+new_leaf_backup({SelfAddr, SelfName}, {FromAddr, FromName}, {L, R}, {OldL, OldR}) ->
     LeafSetNodes = L ++ R,
     OldLeafSetNodes = OldL ++ OldR,
     Leaf = {hash_name(FromName), {FromAddr, FromName}},
 
     case {lists:member(Leaf, LeafSetNodes), lists:member(Leaf, OldLeafSetNodes)} of
         {true, false} ->
-            backup_folder_to({SelfAddr, SelfName}, {FromAddr, FromName}, RetryInterval);
+            backup_folder_to({SelfAddr, SelfName}, {FromAddr, FromName});
         _ ->
             ok
     end.
@@ -170,6 +177,9 @@ keepalive(SelfInfo, RoutingTable, LeafSet) ->
     broadcast_tree(SelfInfo, RoutingTable, {alive}),
     broadcast(SelfInfo, LeafSet, {alive}).
 
+send_alive_res(SelfInfo, {FromAddr, _FromName}, Msg_Id) ->
+    FromAddr ! {SelfInfo, Msg_Id, get_time(), {alive_res}}.
+
 
 share_info(SelfInfo, DestList, {L, R}) ->
     Leaves = L ++ R,
@@ -182,7 +192,7 @@ info_res({_SelfAddr, SelfName}, NodesList, RoutingTable, LeafSet, L2) ->
     {NewRoutingTable, NewLeafSet}.
 
 
-exit_response({SelfAddr, SelfName}, From, RoutingTable, LeafSet, L2, RetryInterval) ->
+exit_response({SelfAddr, SelfName}, From, RoutingTable, LeafSet, L2) ->
 
     CleanLeafSet = remove_leaf(LeafSet,From, SelfName),
     NewRoutingTable = remove_node(From, RoutingTable),
@@ -192,7 +202,7 @@ exit_response({SelfAddr, SelfName}, From, RoutingTable, LeafSet, L2, RetryInterv
     NewLeavesList = NewLeft ++ NewRight,
     NewLeaves = [Node || {_Key, Node} <- NewLeavesList],
     lists:foreach(fun(Node) ->
-        new_leaf_backup({SelfAddr, SelfName}, Node, {NewLeft, NewRight}, CleanLeafSet, RetryInterval) 
+        new_leaf_backup({SelfAddr, SelfName}, Node, {NewLeft, NewRight}, CleanLeafSet) 
     end, NewLeaves),
     {NewRoutingTable, {NewLeft, NewRight}}.
 
