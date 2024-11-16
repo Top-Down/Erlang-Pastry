@@ -18,19 +18,29 @@ start_test() ->
     Node3 = start_node("node3", "node1@localhost", Node1Info),
     timer:sleep(300),
     Node4 = start_node("node4","node1@localhost", Node1Info),
-    timer:sleep(2000),
+    timer:sleep(300),
+    Node6 = start_node("node6","node1@localhost", Node1Info),
+    timer:sleep(300),
 
-    Pids = [Node1, Node2, Node3, Node4],
+    Pids = [Node1, Node2, Node3, Node4, Node6],
     _Addrs = [
         {node1, node1@localhost},
         {node2, node1@localhost}, 
         {node3, node1@localhost},
-        {node4, node1@localhost}],
+        {node4, node1@localhost},
+        {node6, node1@localhost}],
 
     % Call find on node1
     {node2, node1@localhost} ! {SelfInfo, make_ref(), get_time(), {store_find, "node4"}},
 
     receive_find_response("coord", {node4, node1@localhost}),
+
+    {node2, node1@localhost} ! kill_node,
+
+    timer:sleep(2500),
+
+    ?assert(false),
+
     cleanup(Pids).
 
 
@@ -42,7 +52,7 @@ receive_find_response(SelfName, NodeExpected) ->
         Response ->
             io:format("Other response: ~p~n", [Response]),
             receive_find_response(SelfName, NodeExpected)
-    after 3000 ->
+    after 1000 ->
         io:format("Test completed.~n"),
         ?assert(false)
     end.

@@ -5,9 +5,12 @@
   get_files_res/6, get_files_res_handle/2, get_all_files/7, 
   check_expired_blacklist/2, all_files_res/4]).
 -import(pastry_actions, [join_res/6, keepalive/3, backup/4, 
-  share_info/3, exit_response/4, update_keepalive/4, 
-  check_expired_nodes/5, backup_res/4, suicide/3, 
-  join_res_handle/7]).
+  share_info/3, exit_response/6, update_keepalive/4, 
+  check_expired_nodes/5, backup_res/5, suicide/3, 
+  join_res_handle/8, backup_update/5, backup_find/7, 
+  backup_found/4, new_leaf_backup/4, info_res/5,
+  remove_backup_folder/2, remove_backup_file/3,
+  backup_remove/3, update_leaf_backups/5]).
 -import(routing, [init_routing_table/1]).
 -import(key_gen, [hash_name/1]).
 -import(utils, [get_time/0]).
@@ -62,9 +65,9 @@ join_net(_, undefined,RoutingTable, LeafSet, _) ->
   {RoutingTable, LeafSet};
 join_net({SelfAddr, SelfName}, {StarterPid, StarterName}, RoutingTable, {L, R}, L2) ->
     Leaves = L++R,
-    {NewRoutingTable, NewLeafSet} = update_list(SelfName, [{StarterPid, StarterName} | Leaves], RoutingTable,{L,R}, L2),
+    NodesList = [Node || {_Key, Node} <- Leaves],
+    {NewRoutingTable, NewLeafSet} = update_list(SelfName, [{StarterPid, StarterName} | NodesList], RoutingTable,{L,R}, L2),
     StarterPid ! {{SelfAddr, SelfName}, make_ref(), get_time(), {join}},
-    io:format("Join sent from ~p to ~p~n", [SelfName, StarterName]),
     {NewRoutingTable, NewLeafSet}.
 
 
@@ -79,6 +82,7 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     {From, Msg_id, Timestamp, {delete, File}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       NewFilesList = delete(SelfInfo, From, Msg_id, RoutingTable, LeafSet, File, FilesList),
+      backup_remove(SelfInfo, From, File),
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, NewFilesList, BlackList);
     
     {From, Msg_id, Timestamp, {store_find, FileName}} ->
@@ -107,21 +111,43 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
 
     {From, Msg_id, Timestamp, {backup, FileName, FileSize, FileData}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      backup_res(SelfInfo, FileName, FileSize, FileData),
+      backup_res(SelfInfo, From, FileName, FileSize, FileData),
       node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {join}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = join_res(SelfInfo, From, Msg_id, RoutingTable, LeafSet, ?L2),
+      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, [From], ?RETRY_INTERVAL),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {{FromPid, FromName}, Msg_id, Timestamp, {join_res, Row, SharedLeafSet}} ->
       NewKeepAliveList = update_keepalive({FromPid, FromName}, Msg_id, Timestamp, KeepAliveList),
-      {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2),
+      {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2, ?RETRY_INTERVAL),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+    
+    {From, Msg_id, Timestamp, {backup_find, FileName, BackupName}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      backup_find(SelfInfo, From, Msg_id, RoutingTable, LeafSet, FileName, BackupName),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {backup_found, FileName, BackupName}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      backup_found(SelfInfo, From, FileName, BackupName),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {delete_backup_folder}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      remove_backup_folder(SelfInfo, From),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
+
+    {From, Msg_id, Timestamp, {delete_backup, FileName}} ->
+      NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
+      remove_backup_file(SelfInfo, From, FileName),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {From, _Msg_id, _Timestamp, {exit}} ->
-      {NewRoutingTable, NewLeafSet} = exit_response(SelfInfo, From, RoutingTable, LeafSet),
+      {NewRoutingTable, NewLeafSet} = exit_response(SelfInfo, From, RoutingTable, LeafSet, ?L2, ?RETRY_INTERVAL),
+      backup_update(SelfInfo, From, NewRoutingTable, NewLeafSet, ?RETRY_INTERVAL),
       node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo,  FilesList, BlackList);
 
     {From, Msg_id, Timestamp, {alive}} ->
@@ -130,8 +156,9 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
 
     {From, Msg_id, Timestamp, {info, NodesList}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      update_list(SelfInfo, NodesList, RoutingTable, LeafSet, ?L2),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
+      {NewRoutingTable, NewLeafSet} = info_res(SelfInfo, NodesList, RoutingTable, LeafSet, ?L2),
+      update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, NodesList, ?RETRY_INTERVAL),
+      node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
 
     share_info ->
       share_info(SelfInfo, LeafSet, LeafSet),
@@ -145,6 +172,8 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     
     check_nodes ->
       {NewKeepAliveList, NewRoutingTable, NewLeafset} = check_expired_nodes(SelfInfo, KeepAliveList, RoutingTable, LeafSet, ?EXPIRATION_INTERVAL),
+      NodesList = [Node || {Node, _Timestamp} <- NewKeepAliveList, not lists:keymember(Node, 1, KeepAliveList)],
+      update_leaf_backups(SelfInfo, NewLeafset, LeafSet, NodesList, ?RETRY_INTERVAL),
       erlang:send_after(?CHECK_INTERVAL, self(), check_nodes),
       node_loop(NewRoutingTable, NewLeafset, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
 

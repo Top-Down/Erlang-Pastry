@@ -63,7 +63,7 @@ remove_leaf_test() ->
     Node1Key = hash_name("node1"),
     ExpectedLeft = if Node1Key < SelfKey -> 0; true -> length(NewLeft2) end,
     ExpectedRight = if Node1Key >= SelfKey -> 0; true -> length(NewRight2) end,
-    
+
     ?assertEqual(ExpectedLeft, length(FinalLeft)),
     ?assertEqual(ExpectedRight, length(FinalRight)).
 

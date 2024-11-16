@@ -2,7 +2,7 @@
 
 -import(key_gen, [hash_name/1, binary_to_hex/1]).
 
--export([init_routing_table/1, route_key/2, print_routing_table/1, add_node/2, remove_node/2, get_row/3, update_routing/2]).
+-export([init_routing_table/1, route_key/2, print_routing_table/1, add_node/2, remove_node/2, get_row/3, update_routing/2, get_all_routes/1]).
 
 split_binary_to_hex(Binary) ->
     split_binary_to_hex(Binary, []).
@@ -53,7 +53,6 @@ print_routing_table(Table) ->
     io:format("]").
 
 
-
 get_row(<<Hex:4, _/bitstring>>, Table, 0) ->
     [Tuple || Tuple = {E, _} <- Table, E =/= <<Hex:4>>];
 get_row(<<Hex:4, Rest/bitstring>>, Table, I) ->
@@ -85,9 +84,9 @@ modify_node(<<Hex:4, Rest/bitstring>>, NodeInfo, Table, Acc, <<UsedKeys/bitstrin
             rebuild_table(NewTable, Acc, <<UsedKeys/bitstring, Hex:4>>);
         _ -> Table
     end.
-
 modify_node(<<Key/bitstring>>, NodeInfo, Table, Operation) ->
     modify_node(<<Key/bitstring>>, NodeInfo, Table, [], <<>>, Operation).
+
 
 add_node({NodePid, NodeName}, Table) ->
     <<Key/bitstring>> = hash_name(NodeName),
@@ -97,10 +96,23 @@ add_node({NodePid, NodeName}, Table) ->
 
 update_routing(RoutingTable, Nodes) ->
     RoutingTable1 = lists:foldl(fun(OtherNode, RT) -> 
-        io:fwrite("Node ~p added by ~p~n", [OtherNode, self()]),
         add_node(OtherNode, RT)
     end, RoutingTable, Nodes),
     RoutingTable1.
+
+
+get_all_routes(RoutingTable) ->
+    get_all_routes(RoutingTable, []).
+
+get_all_routes([], Acc) ->
+    Acc;
+get_all_routes([{_, InnerList} | Rest], Acc) when is_list(InnerList) ->
+    get_all_routes(Rest, get_all_routes(InnerList, Acc));
+get_all_routes([{_, {self, self}} | Rest], Acc) ->
+    get_all_routes(Rest, Acc);
+get_all_routes([{_, NodeInfo} | Rest], Acc) ->
+    get_all_routes(Rest, [NodeInfo | Acc]).
+
 
 
 remove_node({NodePid, NodeName}, Table) ->

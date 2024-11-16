@@ -42,8 +42,8 @@ remove_node_test() ->
     Table2 = add_node(Node2, Table),
     Table3 = add_node(Node3, Table2),
     Table4 = add_node(Node4, Table3),
-    Table5 = remove_node(Node2, Table4),
-    ?assertEqual(2, length(Table5)).
+    Table5 = remove_node(Node3, Table4),
+    ?assertEqual(3, length(Table5)).
 
 % Test get_row/3
 get_row_test() ->
@@ -52,6 +52,7 @@ get_row_test() ->
     Table2 = add_node(Node2, Table),
     Table3 = add_node(Node3, Table2),
     Table4 = add_node(Node4, Table3),
+    
     Row = get_row(<<Key1/bitstring>>, Table4, 0),
     ?assertEqual(3, length(Row)).
 

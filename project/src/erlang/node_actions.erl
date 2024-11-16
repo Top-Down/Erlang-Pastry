@@ -6,7 +6,8 @@
 -import(file_handler, [store_file/3, get_file_size/1, delete_file/1, list_files/1]).
 -import(leaf_set, [closest_node/3, remove_leaf/3, add_leaf/4, update_leaf_set/4]).
 -export([full_route/4, update_list/5, send_file_to_store/5, save_file_to_store/4, delete_stored_file/5,
-    broadcast/3, broadcast/4, broadcast_tree/4, broadcast_tree/3, get_folder_path/1, get_file_path/2]).
+    broadcast/3, broadcast/4, broadcast_tree/4, broadcast_tree/3, get_folder_path/1, get_file_path/2,
+    get_backup_folder_path/2, get_backup_path/3]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -35,14 +36,20 @@ update_list(SelfName, NodesList, RoutingTable, LeafSet, L2) ->
 
 
 get_folder_path(SelfName) ->
-    "./files/" ++ SelfName ++ "/".
+    FolderPath = "./files/" ++ SelfName ++ "/",
+    file:make_dir(FolderPath),
+    FolderPath.
+
 
 get_file_path(SelfName, FileName) ->
     "./files/" ++ SelfName ++ "/"++ FileName.
 
 
-get_backup_folder_path(SelfName, NodeName, FileName) ->
-    "./files/" ++ SelfName ++ "/backup/"++ NodeName ++ "/".
+get_backup_folder_path(SelfName, NodeName) ->
+    FolderPath = "./files/" ++ SelfName ++ "/backup/"++ NodeName ++ "/",
+    file:make_dir(FolderPath),
+    FolderPath.
+
 
 get_backup_path(SelfName, NodeName, FileName) ->
     "./files/" ++ SelfName ++ "/backup/"++ NodeName ++ "/" ++ FileName.

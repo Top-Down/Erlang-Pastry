@@ -21,8 +21,10 @@ add_to_list(List, MaxLen, Element, RemoveFun) ->
             end
     end.
 
+add_leaf(LeafSet, _, {_NodePid, NodeName}, SelfName) 
+  when NodeName =:= SelfName -> 
+    LeafSet;
 add_leaf({Left, Right}, L2, {NodePid, NodeName}, SelfName) ->
-    % create connection
     NodeKey = hash_name(NodeName),
     MyKey = hash_name(SelfName),
     NodeTuple = {NodeKey, {NodePid, NodeName}},
@@ -35,6 +37,7 @@ add_leaf({Left, Right}, L2, {NodePid, NodeName}, SelfName) ->
             NewRight = add_to_list(Right, L2, NodeTuple, fun lists:max/1),
             {Left, NewRight}
     end.
+
 
 
 remove_leaf({Left, Right}, {NodePid, NodeName}, SelfName) ->

@@ -1,6 +1,6 @@
 -module(file_handler_test).
 
--import(file_handler, [send_file/2, receive_file/2, get_file_size/1]).
+-import(file_handler, [store_file/3, get_file_size/1, delete_file/1, list_files/1, move_file/2]).
 
 -include_lib("kernel/include/file.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -9,46 +9,19 @@
 
 send_file_test() ->
     % Start node1
-    Father = self(),
-    Node1 = spawn(fun() -> node_start("node1", Father) end),
 
-    io:format("node1: ~p~n", [Node1]),
-    timer:sleep(300),
-    {_Res, Size} = get_file_size("files/sborra.txt"),
-    Node1 ! {file_send, Size},
-    send_file(Node1, "files/sborra.txt"),
-
-    Pids = [Node1],
-    receive_file_response(),
-    cleanup(Pids).
+    FilePath = "files/lorem.txt",
+    DestPath1 = "files1/lorem.txt",
+    DestPath2 = "files2/lorem.txt",
 
 
-
-node_start(_NodeName, Father) ->
-    receive
-        {file_send, Size} ->
-            receive_file("files/sborra2.txt", Size),
-            Father ! {file_received}
-    after 5000 ->
-        io:format("Test failed.~n"),
-        ?assert(false)
-    end.   
-
-
-
-receive_file_response() ->
-    receive
-        {file_received} ->
-            io:format("File send and received~n");
-        Response -> 
-            io:format("Other response: ~p~n", [Response]),
+    case file:read_file(FilePath) of
+        {ok, FileData} ->
+            Size = erlang:size(FileData),
+            store_file(DestPath1, Size, FileData);
+        {error, _Reason} ->
             ?assert(false)
-    after 5000 ->
-        io:format("Test failed.~n"),
-        ?assert(false)
-    end.
+    end,
 
-
-cleanup(Pids) ->
-    lists:foreach(fun(Pid) -> exit(Pid, kill) end, Pids),
-    ok.
+    
+    move_file(DestPath1, DestPath2).
