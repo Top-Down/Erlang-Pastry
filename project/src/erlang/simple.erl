@@ -1,4 +1,4 @@
--module(node).
+-module(simple).
 
 -export([start_node/2]).
 
