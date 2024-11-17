@@ -17,7 +17,7 @@ public class DeleteMessage extends ErlangMessage {
             operation, fileName
         });
 
-        this.msgDTO.setContent(deleteMsgContent);
+        this.content = deleteMsgContent;
     }
 
 

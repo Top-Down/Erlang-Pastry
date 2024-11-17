@@ -16,21 +16,25 @@ public class Common {
         throw new UnsupportedOperationException("Utility class");
     }
     
-    public static void createFileFromBinaryData(String fileName, byte[] binaryData) throws Exception {
-        // directory where the file will be saved
-        String directoryPath = "files";
+    public static String getFileDir() {
+    	String tomcatBase = System.getProperty("catalina.base");
+
+        // Directory where the file will be saved
+        String directoryPath = tomcatBase + File.separator + "webapps" + File.separator + "pastry" + File.separator + "files" + File.separator;
         File directory = new File(directoryPath);
         if(!directory.exists()) directory.mkdirs();
+        
+        return directoryPath;
+    }
+    
+    public static void createFileFromBinaryData(String fileName, byte[] binaryData) throws Exception {
+        String directoryPath = getFileDir();
+        File file = new File(directoryPath + fileName);
 
-        // file path
-        File file = new File(directoryPath + File.separator + fileName);
-
-        // write  binary data to file
+        // Write binary data to file
         FileOutputStream fos = new FileOutputStream(file);
         fos.write(binaryData);
         fos.close();
-        
-        System.out.println("File created successfully: " + file.getAbsolutePath());
     }
     
     public static ArrayList<String> getConfig(int configIndex) {

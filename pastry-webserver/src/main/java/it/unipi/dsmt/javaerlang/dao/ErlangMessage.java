@@ -1,6 +1,8 @@
 package it.unipi.dsmt.javaerlang.dao;
 
 import java.util.ArrayList;
+import java.util.logging.Logger;
+
 import com.ericsson.otp.erlang.*;
 import it.unipi.dsmt.javaerlang.dto.ErlangMessageDTO;
 
@@ -10,6 +12,8 @@ public abstract class ErlangMessage {
     OtpMbox mailBox;
     OtpErlangTuple msg;
     OtpErlangTuple content;
+    
+    private static final Logger logger = Logger.getLogger(ErlangMessage.class.getName());
     
     public abstract void setContent(ArrayList<OtpErlangObject> content);
     public abstract OtpErlangObject getContent(ErlangMessage request);
@@ -26,12 +30,13 @@ public abstract class ErlangMessage {
             senderNameIn,
             msgId,
             timestamp);
-
+        
         OtpErlangString senderNameObj = new OtpErlangString(this.msgDTO.getSenderName());
         senderInfo = new OtpErlangTuple(new OtpErlangObject[]{
             this.msgDTO.getSenderAddr(), senderNameObj
         });
 
+        this.msgDTO.setContent(this.content);
         this.msg = new OtpErlangTuple(new OtpErlangObject[]{
             senderInfo,
             this.msgDTO.getMsgId(),
@@ -42,8 +47,8 @@ public abstract class ErlangMessage {
 
     public void unwrapMessage() {
         senderInfo = (OtpErlangTuple) msg.elementAt(0);
-        String senderName = (String) this.senderInfo.elementAt(0).toString();
-        OtpErlangTuple senderAddr = (OtpErlangTuple) this.senderInfo.elementAt(1);
+        OtpErlangTuple senderAddr = (OtpErlangTuple) this.senderInfo.elementAt(0);
+        String senderName = (String) this.senderInfo.elementAt(1).toString();
 
         OtpErlangRef msgId = (OtpErlangRef) msg.elementAt(1);
         OtpErlangLong timestamp = (OtpErlangLong) msg.elementAt(2);
@@ -58,12 +63,13 @@ public abstract class ErlangMessage {
     }
 
     public boolean checkMsgId(ErlangMessage oldMsg) {
-        return oldMsg.msgDTO.getMsgId() == this.msgDTO.getMsgId();
+        return oldMsg.msgDTO.getMsgId().equals(this.msgDTO.getMsgId());
     }
 
     public boolean checkOperation(String operationIn) {
     	OtpErlangAtom operation = new OtpErlangAtom(operationIn);
-        return operation == this.msgDTO.getOperation();
+    	OtpErlangAtom msgOp = (OtpErlangAtom) this.msgDTO.getOperation();
+        return operation.equals(msgOp);
     }
 
     public void sendMessage(String destMailBox, String destName){

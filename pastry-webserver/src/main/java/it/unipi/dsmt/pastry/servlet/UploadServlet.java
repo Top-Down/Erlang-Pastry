@@ -21,11 +21,11 @@ import it.unipi.dsmt.javaerlang.JavaErlangConnector;
 public class UploadServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
     
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
     	long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"hello_server@127.0.0.1",
-    		"CoordinatorMailBox",
+    		"node1@127.0.0.1",
+    		"node1",
     		"pastry",
     		"webserver_" + String.valueOf(threadId) + "@127.0.0.1",
     		"WebserverMailBox_" + String.valueOf(threadId)

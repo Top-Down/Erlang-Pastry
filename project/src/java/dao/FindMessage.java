@@ -17,7 +17,7 @@ public class FindMessage extends ErlangMessage {
             operation, fileName
         });
 
-        this.msgDTO.setContent(findMsgContent);
+        this.content = findMsgContent;
     }
 
 
@@ -26,7 +26,6 @@ public class FindMessage extends ErlangMessage {
         if(!this.checkOperation("find_end")) return new OtpErlangBinary(new byte[0]);
         if(!this.checkMsgId(findReq)) return new OtpErlangBinary(new byte[0]);
 
-        OtpErlangString fileName = (OtpErlangString) this.msgDTO.getContentElement(1);
         OtpErlangLong size = (OtpErlangLong) this.msgDTO.getContentElement(2);
         OtpErlangBinary file = (OtpErlangBinary) this.msgDTO.getContentElement(3);
 

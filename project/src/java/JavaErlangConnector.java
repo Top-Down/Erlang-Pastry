@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 
 import it.unipi.dsmt.javaerlang.dao.*;
 
-
 public class JavaErlangConnector {   
     String pastryMailBox;
     String pastryName;
@@ -61,10 +60,10 @@ public class JavaErlangConnector {
 
     public byte[] find(String fileName) throws Exception {
     	FindMessage findMsg = new FindMessage();
-        OtpErlangBinary file = (OtpErlangBinary)this.sendRecvMsg(
+        OtpErlangBinary file = (OtpErlangBinary) this.sendRecvMsg(
             this.pastryMailBox, 
             this.pastryName, 
-            findMsg, 
+            findMsg,
             new ArrayList<>(List.of(new OtpErlangString(fileName))),
             FindMessage.class);
         return file.binaryValue();
@@ -92,7 +91,7 @@ public class JavaErlangConnector {
             findStorageMsg, 
             new ArrayList<>(List.of(new OtpErlangString(fileName))),
             StoreMessage.class);
-        if(storeNode == new OtpErlangTuple(new OtpErlangObject[]{})) return false;
+        if(storeNode.equals(new OtpErlangTuple(new OtpErlangObject[]{}))) return false;
         
         String destMailBox = ((OtpErlangAtom) storeNode.elementAt(0)).atomValue();
         String destName = ((OtpErlangAtom) storeNode.elementAt(1)).atomValue();
@@ -104,7 +103,8 @@ public class JavaErlangConnector {
                 storeMsg,
                 new ArrayList<>(List.of(new OtpErlangString(fileName), new OtpErlangBinary(fileData))),
                 StoreMessage.class);
-        return ret.elementAt(0) == new OtpErlangAtom("store_OK");
+        
+        return ((OtpErlangAtom) ret.elementAt(0)).equals(new OtpErlangAtom("store_OK"));
     }
 
 
@@ -117,6 +117,6 @@ public class JavaErlangConnector {
                 new ArrayList<>(List.of(new OtpErlangString(fileName))),
                 DeleteMessage.class);
     	
-        return ret.elementAt(0) == new OtpErlangAtom("true");
+        return ((OtpErlangAtom) ret.elementAt(0)).equals(new OtpErlangAtom("true"));
     }
 }

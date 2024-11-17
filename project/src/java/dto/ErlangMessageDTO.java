@@ -64,6 +64,7 @@ public class ErlangMessageDTO {
 
     public void setContent(OtpErlangTuple content) {
         this.content = content;
+        this.operation = (OtpErlangAtom) content.elementAt(0);
     }
 
     public OtpErlangObject getContentElement(int i) {
