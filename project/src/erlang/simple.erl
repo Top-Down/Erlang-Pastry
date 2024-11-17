@@ -7,6 +7,7 @@ get_time() ->
     (MegaSecs * 1000000 + Secs) * 1000 + MicroSecs div 1000.
 
 start_node(Name, NodeName) ->
+    io:format("Starting node with name ~p and nodename ~p~n", [Name, NodeName]),
     Cookie = "pastry",
     case erlang:get_cookie() of
             undefined -> erlang:set_cookie(node(), Cookie);
@@ -18,12 +19,17 @@ start_node(Name, NodeName) ->
     SelfAddr = {MailBoxAtom, NodeAddr},
 
     case register(MailBoxAtom, self()) of
-        true -> node_loop({SelfAddr, Name});
-        false -> {error, already_registered}
+        true -> 
+            io:format("Node registered successfully with address ~p~n", [SelfAddr]),
+            node_loop({SelfAddr, Name});
+        false -> 
+            io:format("Error: Node already registered~n", []),
+            {error, already_registered}
     end.
 
 % Main loop for the provider node
 node_loop(SelfInfo) ->
+  io:format("Entering node loop with SelfInfo ~p~n", [SelfInfo]),
   receive
     {From, Msg_id, _Timestamp, {find, FileName}} ->
         io:format("Received find request for ~p~n", [FileName]),
@@ -50,8 +56,8 @@ node_loop(SelfInfo) ->
         get_all_files(SelfInfo, From, Msg_id),
         node_loop(SelfInfo);
 
-    _ ->
-      io:format("Received unknown request~n", []),
+    Other ->
+      io:format("Received unknown request: ~p~n", [Other]),
       node_loop(SelfInfo)
   end.
 
