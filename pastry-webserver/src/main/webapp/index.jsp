@@ -33,7 +33,7 @@
 	        <button type="button" onclick="updateFile()">Upload File</button>
 	    	<div id="uploadMsg"></div>
 	    </form>
-	    <button id="populate-table-button" onclick="populateTable()">Populate Table</button>
+	    <button id="populate-table-button" onclick="populateTable()">Show all files</button>
 	</div>
 
     <div class="table-container">

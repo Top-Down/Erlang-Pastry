@@ -1,9 +1,0 @@
-[
-	{
-		"COORDINATOR_NAME": "hello_server@127.0.0.1",
-		"COORDINATOR_MBOX": "CoordinatorMailBox",
-		"COOKIE": "pastry",
-		"CONNECTOR_NAME": "webserver@127.0.0.1",
-		"CONNECTOR_MBOX": "WebserverMailBox"
-	}
-]

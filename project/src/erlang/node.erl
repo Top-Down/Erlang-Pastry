@@ -1,7 +1,7 @@
 -module(node).
 
 -import(node_actions, [update_list/5]).
--import(web_responses, [find_store/6, store/7, find/6, delete/7, 
+-import(web_responses, [find_store/6, store/7, find/6, delete/6, 
   get_files_res/6, get_files_res_handle/2, get_all_files/7, 
   check_expired_blacklist/2, all_files_res/4]).
 -import(pastry_actions, [join_res/6, keepalive/3, share_info/3, 
@@ -81,9 +81,9 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
 
     {From, Msg_id, Timestamp, {delete, File}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
-      NewFilesList = delete(SelfInfo, From, Msg_id, RoutingTable, LeafSet, File, FilesList),
-      backup_remove(SelfInfo, From, File),
-      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, NewFilesList, BlackList);
+      delete(SelfInfo, From, Msg_id, RoutingTable, LeafSet, File),
+      backup_remove(SelfInfo, LeafSet, File),
+      node_loop(RoutingTable, LeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
     
     {From, Msg_id, Timestamp, {store_find, FileName}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),

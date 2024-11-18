@@ -75,7 +75,7 @@ send_file_to_store({SelfAddr, SelfName}, {FromPid, _FromName}, OpCode, Msg_id, F
 delete_stored_file({SelfAddr, SelfName}, {FromAddr, _FromName}, OpCode, Msg_Id, FileName) ->
     FilePath = get_file_path(SelfName, FileName),
     delete_file(FilePath),
-    FromAddr ! {{SelfAddr, SelfName}, Msg_Id, get_time(), {OpCode, FileName}}.
+    FromAddr ! {{SelfAddr, SelfName}, Msg_Id, get_time(), {OpCode}}.
 
 
 broadcast_leaf(SelfInfo, NodeList, Msg) ->

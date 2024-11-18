@@ -8,7 +8,7 @@
     broadcast_routing/3, get_folder_path/1, get_file_path/2,
     get_backup_folder_path/2, get_backup_path/3, broadcast_leaf/4, broadcast_leaf/3]).
 
--export([find_store/6, store/7, find/6, delete/7, get_files_res/6, get_files_res_handle/2, 
+-export([find_store/6, store/7, find/6, delete/6, get_files_res/6, get_files_res_handle/2, 
     get_all_files/7, check_expired_blacklist/2, all_files_res/4]).
 
 
@@ -40,15 +40,13 @@ find({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     end.
 
 
-delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName, FilesList) ->
+delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
         route_end -> 
-            delete_stored_file({SelfAddr, SelfName}, From, delete_end, Msg_id, FileName),
-            [File || File <- FilesList, File =/= FileName];
+            delete_stored_file({SelfAddr, SelfName}, From, delete_end, Msg_id, FileName);
         {Pid, _Name} -> 
-            Pid ! {From, Msg_id, get_time(), {delete, FileName}},
-            FilesList
+            Pid ! {From, Msg_id, get_time(), {delete, FileName}}
     end.
 
 
@@ -67,7 +65,7 @@ all_files_res(SelfInfo, {FromAddr, _FromName}, Msg_Id, FilesList)->
 
 
 get_files_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_Id, RoutingTable, LeafSet, BlackList)->
-    case lists:keymember(1, Msg_Id, BlackList) of
+    case lists:keymember(Msg_Id, 1, BlackList) of
         true -> BlackList;
         false ->        
             FilePath = get_folder_path(SelfName),

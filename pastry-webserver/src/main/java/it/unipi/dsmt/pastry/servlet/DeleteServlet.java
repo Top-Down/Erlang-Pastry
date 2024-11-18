@@ -18,10 +18,10 @@ public class DeleteServlet extends HttpServlet {
 		
 		long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"node1@127.0.0.1",
+    		"node1@10.2.1.4",
     		"node1",
     		"pastry",
-    		"webserver_" + String.valueOf(threadId) + "@127.0.0.1",
+    		"webserver_" + String.valueOf(threadId) + "@10.2.1.4",
     		"WebserverMailBox_" + String.valueOf(threadId)
         );
 		

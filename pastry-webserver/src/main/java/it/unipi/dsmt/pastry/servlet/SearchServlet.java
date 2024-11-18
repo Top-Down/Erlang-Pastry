@@ -5,6 +5,9 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import it.unipi.dsmt.javaerlang.JavaErlangConnector;
@@ -13,15 +16,25 @@ import it.unipi.dsmt.pastry.Common;
 @WebServlet(name="SearchServlet", value="/search")
 public class SearchServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
+	
+    private void createFileFromBinaryData(String fileName, byte[] binaryData) throws Exception {
+        String directoryPath = Common.getFileDir();
+        File file = new File(directoryPath + fileName);
+
+        // Write binary data to file
+        FileOutputStream fos = new FileOutputStream(file);
+        fos.write(binaryData);
+        fos.close();
+    }
 
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         boolean fileFound = false;
         long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"node1@127.0.0.1",
+    		"node1@10.2.1.4",
     		"node1",
     		"pastry",
-    		"webserver_" + String.valueOf(threadId) + "@127.0.0.1",
+    		"webserver_" + String.valueOf(threadId) + "@10.2.1.4",
     		"WebserverMailBox_" + String.valueOf(threadId)
         );
 
@@ -30,7 +43,7 @@ public class SearchServlet extends HttpServlet {
             byte[] binaryData = connector.find(fileName);
             
             if(binaryData.length > 0) {
-                Common.createFileFromBinaryData(fileName, binaryData);
+                createFileFromBinaryData(fileName, binaryData);
                 fileFound = true;
             }
         }
