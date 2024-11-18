@@ -10,13 +10,16 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import it.unipi.dsmt.pastry.Common;
+
 @WebServlet(name="DownloadServlet", value="/download")
 public class DownloadServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		String directoryPath = Common.getFileDir();
 		String fileName = request.getParameter("fileName");
-		File file = new java.io.File(fileName);
+		File file = new File(directoryPath + fileName);
 		
         if(file.exists()) {
             response.setContentType("application/octet-stream");

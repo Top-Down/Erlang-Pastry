@@ -2,6 +2,7 @@ const E_NO_FILE = "File not found";
 const E_UP_FAILED = "Upload failed";
 const E_DEL_FAILED = "Delete failed";
 const OK_UPLOAD = "File uploaded!";
+const OK_DELETE = "File deleted!";
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('file').addEventListener('change', updateFileName);
@@ -18,30 +19,46 @@ async function updateFile() {
     const uploadMsg = document.getElementById("uploadMsg");
     const fileInput = document.getElementById("file");
     const file = fileInput.files[0];
-	
-    const formData = new FormData();
-    formData.append('file', file);
 
-    try {
-        const response = await fetch("/upload", {
-            method: 'POST',
-            body: formData
-        });
-		
-        if(response.ok) uploadMsg.textContent = OK_UPLOAD;
-		else uploadMsg.textContent = E_UP_FAILED;
-    }
-	catch (error) {
-        uploadMsg.textContent = E_UP_FAILED;
-    }
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+
+    reader.onload = async function() {
+        const arrayBuffer = reader.result;
+        const byteArray = new Uint8Array(arrayBuffer);
+
+        const formData = new FormData();
+        formData.append('file', new Blob([byteArray]), file.name);
+
+        try {
+            const response = await fetch("upload", {
+                method: 'PUT',
+                body: formData
+            });
+
+            if (response.ok) {
+                uploadMsg.textContent = OK_UPLOAD;
+            } else {
+                uploadMsg.textContent = E_UP_FAILED;
+            }
+        } catch (error) {
+            uploadMsg.textContent = E_UP_FAILED;
+        }
+    };
+
+    reader.onerror = function() {
+        uploadMsg.textContent = "Error reading file.";
+    };
 }
+
 
 function downloadRequest(fileName, errMsg) {
 	fetch(
-			'/download?fileName=' + fileName,
+			'download?fileName=' + fileName,
 			{ method: 'GET' }
 		)
 		.then(response => {
+			console.log(response);
 	        if(response.ok) {
 				errMsg.textContent = "";
 				return response.blob();
@@ -68,11 +85,11 @@ function downloadRequest(fileName, errMsg) {
 
 function deleteRequest(fileName, errMsg) {
 	fetch(
-			'/delete?fileName=' + fileName,
-			{ method: 'GET' }
+			'delete?fileName=' + fileName,
+			{ method: 'DELETE' }
 		)
 		.then(response => {
-	        if(response.ok) uploadMsg.textContent = OK_UPLOAD;
+	        if(response.ok) errMsg.textContent = OK_DELETE;
 	        else {
 				errMsg.textContent = E_DEL_FAILED;
 				throw new Error(E_DEL_FAILED);
@@ -85,16 +102,14 @@ function deleteRequest(fileName, errMsg) {
 
 function downloadFile() {
 	const errMsg = document.getElementById("errMsg");
-	const fileInput = document.getElementById("file");
-    const fileName = fileInput.files[0];
+	const fileName = document.getElementById("query").value;
 	
 	downloadRequest(fileName, errMsg);
 }
 
 function deleteFile() {
 	const errMsg = document.getElementById("errMsg");
-	const fileInput = document.getElementById("file");
-    const fileName = fileInput.files[0];
+	const fileName = document.getElementById("query").value;
 	
 	deleteRequest(fileName, errMsg);
 }
@@ -139,6 +154,7 @@ async function searchFile() {
     const query = document.getElementById("query").value;
     const response = await fetch("search?query=" + query);
     const result = await response.json();
+	console.log(result);
 
 	const downloadBtn = document.getElementById("downloadButton");
 	const deleteBtn = document.getElementById("deleteButton");

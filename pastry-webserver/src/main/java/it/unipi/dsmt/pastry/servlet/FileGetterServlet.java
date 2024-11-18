@@ -33,14 +33,11 @@ public class FileGetterServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-
-        Logger logger = Logger.getLogger(getClass().getName());
-        logger.info("test");
         
         long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"hello_server@127.0.0.1",
-    		"CoordinatorMailBox",
+			"node1@127.0.0.1",
+    		"node1",
     		"pastry",
     		"webserver_" + String.valueOf(threadId) + "@127.0.0.1",
     		"WebserverMailBox_" + String.valueOf(threadId)

@@ -9,13 +9,13 @@ public class StoreMessage extends ErlangMessage {
     @Override
     public void setContent(ArrayList<OtpErlangObject> content) {
     	if(content.size() == 1 && content.get(0) instanceof OtpErlangString) {
-            OtpErlangAtom operation = new OtpErlangAtom("find_store");
+            OtpErlangAtom operation = new OtpErlangAtom("store_find");
             OtpErlangString fileName = (OtpErlangString) content.get(0);
             OtpErlangTuple findMsgContent = new OtpErlangTuple(new OtpErlangObject[]{
                 operation, fileName
             });
 
-            this.msgDTO.setContent(findMsgContent);
+            this.content = findMsgContent;
         }
     	else if(content.size() == 2 && content.get(0) instanceof OtpErlangString && content.get(1) instanceof OtpErlangBinary) {
             OtpErlangAtom operation = new OtpErlangAtom("store");
@@ -26,7 +26,7 @@ public class StoreMessage extends ErlangMessage {
                 operation, fileName, size, file
             });
 
-            this.msgDTO.setContent(findMsgContent);
+            this.content = findMsgContent;
         }
     }
 

@@ -61,50 +61,50 @@ node_loop(SelfInfo) ->
       node_loop(SelfInfo)
   end.
 
-find(_SelfInfo, From, Msg_id, FileName) ->
+find(SelfInfo, {FromAddr, _FromName}, Msg_id, FileName) ->
     FilePath = "./files/" ++ FileName,
     case file:read_file(FilePath) of
         {ok, FileData} ->
             FileSize = byte_size(FileData),
             io:format("File ~p found with size ~p~n", [FileName, FileSize]),
-            From ! {self(), Msg_id, get_time(), {find_end, FileName, FileSize, FileData}};
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {find_end, FileName, FileSize, FileData}};
         {error, Reason} ->
             io:format("Error reading file ~p: ~p~n", [FileName, Reason]),
-            From ! {self(), Msg_id, get_time(), {error, Reason}}
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {error, Reason}}
     end.
 
-find_store({SelfAddr, _SelfName}, From, Msg_id, _FileName) ->
+find_store({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_id, _FileName) ->
     io:format("Sending store_found response with SelfAddr ~p~n", [SelfAddr]),
-    From ! {self(), Msg_id, get_time(), {store_found, SelfAddr}}.
+    FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {store_found, SelfAddr}}.
 
-store(_SelfInfo, From, Msg_id, FileName, _FileSize, FileData) ->
+store(SelfInfo, {FromAddr, _FromName}, Msg_id, FileName, _FileSize, FileData) ->
     FilePath = "./files/" ++ FileName,
     case file:write_file(FilePath, FileData) of
         ok ->
             io:format("File ~p stored successfully~n", [FileName]),
-            From ! {self(), Msg_id, get_time(), {store_end}};
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {store_end}};
         {error, Reason} ->
             io:format("Error storing file ~p: ~p~n", [FileName, Reason]),
-            From ! {self(), Msg_id, get_time(), {error, Reason}}
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {error, Reason}}
     end.
 
-get_all_files(_SelfInfo, From, Msg_id) ->
+get_all_files(SelfInfo, {FromAddr, _FromName}, Msg_id) ->
     case file:list_dir("./files") of
         {ok, FileList} ->
             io:format("Listing all files: ~p~n", [FileList]),
-            From ! {self(), Msg_id, get_time(), {all_files_res, FileList}};
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {all_files_res, FileList}};
         {error, Reason} ->
             io:format("Error listing files: ~p~n", [Reason]),
-            From ! {self(), Msg_id, get_time(), {error, Reason}}
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {error, Reason}}
     end.
 
-delete(_SelfInfo, From, Msg_id, FileName) ->
+delete(SelfInfo, {FromAddr, _FromName}, Msg_id, FileName) ->
     FilePath = "./files/" ++ FileName,
     case file:delete(FilePath) of
         ok ->
             io:format("File ~p deleted successfully~n", [FileName]),
-            From ! {self(), Msg_id, get_time(), {delete_end}};
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {delete_end}};
         {error, Reason} ->
             io:format("Error deleting file ~p: ~p~n", [FileName, Reason]),
-            From ! {self(), Msg_id, get_time(), {error, Reason}}
+            FromAddr ! {SelfInfo, Msg_id, get_time(), {error, Reason}}
     end.

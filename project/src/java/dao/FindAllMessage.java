@@ -15,7 +15,7 @@ public class FindAllMessage extends ErlangMessage {
             operation
         });
 
-        this.msgDTO.setContent(findAllMsgContent);
+        this.content = findAllMsgContent;
     }
 
 
