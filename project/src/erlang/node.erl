@@ -6,10 +6,11 @@
   check_expired_blacklist/2, all_files_res/4]).
 -import(pastry_actions, [join_res/6, keepalive/3, share_info/3, 
     exit_response/5, update_keepalive/4, check_expired_nodes/5, 
-    suicide/3, join_res_handle/7, info_res/5, send_alive_res/3]).
+    suicide/3, join_res_handle/7, info_res/5, send_alive_res/3,
+    refresh_file_owner/3]).
 -import(backup_actions, [backup/3, backup_res/5, backup_update/4, 
     backup_find/7, backup_found/4, new_leaf_backup/4,
-    remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/3, 
+    remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/4, 
     backup_remove/3, update_leaf_backups/4]).
 -import(routing, [init_routing_table/1]).
 -import(key_gen, [hash_name/1]).
@@ -23,7 +24,7 @@
 -define(BLACKLIST_INTERVAL, 1000).
 -define(FLOOD_INTERVAL, 1000).
 -define(INFO_INTERVAL, 1000).
--define(L2, 2).
+-define(L2, 8).
 
 
 start_node(Name, NodeName) ->
@@ -116,14 +117,14 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     {From, Msg_id, Timestamp, {join}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = join_res(SelfInfo, From, Msg_id, RoutingTable, LeafSet, ?L2),
+      refresh_file_owner(SelfInfo, RoutingTable, LeafSet),
       update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, [From]),
-      io:fwrite("~p: Join from ~p and leafset: ~p ~n", [SelfInfo, From, NewLeafSet]),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
 
     {{FromPid, FromName}, Msg_id, Timestamp, {join_res, Row, SharedLeafSet}} ->
       NewKeepAliveList = update_keepalive({FromPid, FromName}, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = join_res_handle(SelfInfo, {FromPid, FromName}, Row, SharedLeafSet, RoutingTable, LeafSet, ?L2),
-      io:fwrite("~p: Join Res from ~p and leafset: ~p ~n", [SelfInfo, FromName, NewLeafSet]),
+      refresh_file_owner(SelfInfo, RoutingTable, LeafSet),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo, FilesList, BlackList);
     
     {From, Msg_id, Timestamp, {backup_find, FileName, BackupName}} ->
@@ -163,6 +164,7 @@ node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) 
     {From, Msg_id, Timestamp, {info, NodesList}} ->
       NewKeepAliveList = update_keepalive(From, Msg_id, Timestamp, KeepAliveList),
       {NewRoutingTable, NewLeafSet} = info_res(SelfInfo, NodesList, RoutingTable, LeafSet, ?L2),
+      refresh_file_owner(SelfInfo, RoutingTable, LeafSet),
       update_leaf_backups(SelfInfo, NewLeafSet, LeafSet, NodesList),
       node_loop(NewRoutingTable, NewLeafSet, NewKeepAliveList, SelfInfo,  FilesList, BlackList);
 

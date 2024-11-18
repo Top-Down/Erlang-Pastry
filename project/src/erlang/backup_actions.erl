@@ -9,33 +9,36 @@
     broadcast_routing/4, broadcast_routing/3, send_file_to_store/4, get_file_path/2,
     save_file_to_store/4, get_backup_folder_path/2, get_backup_path/3, get_folder_path/1]).
 -export([backup/3, backup_res/5, backup_update/4, backup_find/7, backup_found/4, new_leaf_backup/4,
-  remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/3, backup_remove/3, update_leaf_backups/4]).
+  remove_backup_folder/2, remove_backup_file/3, old_leaf_backup/4, backup_remove/3, update_leaf_backups/4]).
 
 -include_lib("kernel/include/file.hrl").
 
 -define(EXPIRATION, 5000).
 
 
+%sends backup to all nodes
 backup({SelfAddr, SelfName}, LeafSet, FileName) ->
     FilePath = get_file_path(SelfName,  FileName),
     case file:read_file(FilePath) of
         {ok, FileData} ->
-            {_Res, FileSize} = get_file_size(FilePath),
+            FileSize = erlang:byte_size(FileData),
             broadcast_leaf({SelfAddr, SelfName}, LeafSet, {backup, FileName, FileSize, FileData});
         _ ->
             ok
     end.
 
 
+%deletes all backups of a file
 backup_remove(SelfInfo, LeafSet, FileName) ->
     broadcast_leaf(SelfInfo, LeafSet, {delete_backup, FileName}).
 
 
+%saves a file in the backup frolder of From
 backup_res({_SelfAddr, SelfName}, {_FromAddr, FromName}, FileName, FileSize, FileData) ->
     FilePath = get_backup_path(SelfName, FromName, FileName),
     store_file(FilePath, FileSize, FileData).
 
-
+%updates owner of file, if not known looks for it
 backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet) ->
     BackupFolder = get_backup_folder_path(SelfName, FromName),
     Files = list_files(BackupFolder),
@@ -43,7 +46,6 @@ backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet
         Key = hash_name(FileName),
         case full_route(SelfName, RoutingTable, LeafSet, Key) of
             route_end -> 
-                io:format("~p: New owner ~p: ~p ~n", [SelfName, FromName, FileName]),
                 DestPath = get_file_path(SelfName, FileName),
                 SourcePath = get_backup_path(SelfName, FromName, FileName),
                 move_file(SourcePath, DestPath),
@@ -54,6 +56,7 @@ backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet
     end, Files).
 
 
+%looks for owner of file
 backup_find({SelfAddr, SelfName}, {FromAddr, FromName}, Msg_id, RoutingTable, LeafSet, FileName, BackupName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
@@ -63,13 +66,14 @@ backup_find({SelfAddr, SelfName}, {FromAddr, FromName}, Msg_id, RoutingTable, Le
     end.
 
 
+%moves the fil to the right backup folder
 backup_found({_SelfAddr, SelfName}, {_FromAddr, FromName}, FileName, BackupName) ->
-    io:fwrite("~p: Backup Found ~p: ~p ~p~n", [SelfName, FromName, FileName, BackupName]),
     DestPath = get_backup_path(SelfName, FromName, FileName),
     SourcePath = get_backup_path(SelfName, BackupName, FileName),
     move_file(SourcePath, DestPath).
 
 
+%sends its folder to a node as backup
 backup_folder_to({SelfAddr, SelfName}, {FromAddr, _FromName}) ->
     FolderPath = get_folder_path(SelfName),
     Files = list_files(FolderPath),
@@ -85,6 +89,7 @@ backup_folder_to({SelfAddr, SelfName}, {FromAddr, _FromName}) ->
     end, Files).
 
 
+%for the nodes checks if they entered or exited leafset
 update_leaf_backups(SelfInfo, NewLeafSet, {OldL, OldR}, NewNodes) ->
     lists:foreach(fun(Node) ->
         new_leaf_backup(SelfInfo, Node, NewLeafSet, {OldL, OldR})
@@ -93,10 +98,11 @@ update_leaf_backups(SelfInfo, NewLeafSet, {OldL, OldR}, NewNodes) ->
     OldList = OldL ++ OldR,
     OldNodes = [Node || {_Key, Node} <- OldList],
     lists:foreach(fun(Node) ->
-        old_leaf_backup(SelfInfo, Node, NewLeafSet)
+        old_leaf_backup(SelfInfo, Node, NewLeafSet,{OldL, OldR})
     end, OldNodes).
 
 
+%checks if node entered Leafset
 new_leaf_backup({SelfAddr, SelfName}, {FromAddr, FromName}, {L, R}, {OldL, OldR}) ->
     LeafSetNodes = L ++ R,
     OldLeafSetNodes = OldL ++ OldR,
@@ -110,31 +116,30 @@ new_leaf_backup({SelfAddr, SelfName}, {FromAddr, FromName}, {L, R}, {OldL, OldR}
     end.
 
 
-old_leaf_backup({SelfAddr, SelfName}, {FromAddr, FromName}, {L, R}) ->
+%checks if node is not anymore in leafset
+old_leaf_backup({SelfAddr, SelfName}, {FromAddr, FromName}, {L, R}, {OldL, OldR}) ->
     LeafSetNodes = L ++ R,
+    OldLeafSetNodes = OldL ++ OldR,
 
     Leaf = {hash_name(FromName), {FromAddr, FromName}},
-    case lists:member(Leaf, LeafSetNodes) of
-        false ->
+    case {lists:member(Leaf, LeafSetNodes), lists:member(Leaf, OldLeafSetNodes)} of
+        {false, true} ->
             FromAddr ! {{SelfAddr, SelfName}, make_ref(), get_time(), {delete_backup_folder}};
-        true ->
+        _ ->
             ok
     end.
 
 
+%deletes backup folder of From
 remove_backup_folder({_SelfAddr, SelfName}, {_FromAddr, FromName}) ->
     FolderPath = get_backup_folder_path(SelfName, FromName),
-    case file:list_dir(FolderPath) of
-        {ok, Files} ->
-            lists:foreach(fun(File) ->
-                delete_file(filename:join(FolderPath, File))
-            end, Files),
-            file:del_dir(FolderPath);
-        {error, _Reason} ->
-            ok
-    end.
+    Files = list_files(FolderPath),
+    lists:foreach(fun(File) ->
+        delete_file(filename:join(FolderPath, File))
+    end, Files).
 
 
+%deletes the backup of a file from a backupPath
 remove_backup_file({_SelfAddr, SelfName}, {_FromAddr, FromName}, FileName) ->
     FilePath = get_backup_path(SelfName, FromName, FileName),
     delete_file(FilePath).

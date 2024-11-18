@@ -32,7 +32,9 @@ add_leaf_test() ->
     Node2Key = hash_name("node2"),
     
     {NewLeft, NewRight} = add_leaf(LeafSet, L2, Node1, SelfName),
-    {NewLeft2, NewRight2} = add_leaf({NewLeft, NewRight}, L2, Node2, SelfName),
+    {NewLeft1, NewRight1} = add_leaf({NewLeft, NewRight}, L2, {self(), SelfName}, SelfName),
+
+    {NewLeft2, NewRight2} = add_leaf({NewLeft1, NewRight1}, L2, Node2, SelfName),
     
     % Check if Node1 should be on the left or right
     ExpectedLeft1 = if Node1Key < SelfKey -> 1; true -> 0 end,

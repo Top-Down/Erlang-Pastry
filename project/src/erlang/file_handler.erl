@@ -21,9 +21,9 @@ get_file_size(Filename) ->
 delete_file(FilePath) ->
     case file:delete(FilePath) of
         ok ->
-            io:format("File ~s deleted successfully.~n", [FilePath]);
-        {error, Reason} ->
-            io:format("Failed to delete file: ~p~n", [Reason])
+            ok;
+        Other ->
+            Other
     end.
 
 
@@ -62,11 +62,11 @@ move_file(SrcPath, DestPath) ->
     end.
 
 
-
 list_files(Path) ->
-    io:format("list all files path: ~p~n", [Path]),
     case file:list_dir(Path) of
-        {ok, Items} -> Items;
+        {ok, Items} ->
+            Files = [Item || Item <- Items, filelib:is_regular(filename:join(Path, Item))],
+            Files;
         _ -> []
     end.
 

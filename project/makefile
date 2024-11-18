@@ -8,7 +8,7 @@ EBIN_DIR = ebin
 SRC_FILES = $(SRC_DIR)/key_gen.erl $(SRC_DIR)/network.erl $(SRC_DIR)/leaf_set.erl \
             $(SRC_DIR)/routing.erl $(SRC_DIR)/node_actions.erl $(SRC_DIR)/node.erl $(SRC_DIR)/utils.erl \
 			$(SRC_DIR)/file_handler.erl $(SRC_DIR)/pastry_actions.erl $(SRC_DIR)/web_responses.erl \
-			$(SRC_DIR)/backup_actions.erl 
+			$(SRC_DIR)/backup_actions.erl $(SRC_DIR)/controller.erl 
 
 # Test files
 TEST_FILES = $(TEST_DIR)/key_gen_test.erl $(TEST_DIR)/network_test.erl $(TEST_DIR)/leaf_set_test.erl \
@@ -57,6 +57,10 @@ $(EBIN_DIR)/pastry_actions.beam: $(SRC_DIR)/pastry_actions.erl $(EBIN_DIR)/backu
 
 $(EBIN_DIR)/node.beam: $(SRC_DIR)/node.erl $(EBIN_DIR)/pastry_actions.beam $(EBIN_DIR)/web_responses.beam
 	$(ERLC) -o $(EBIN_DIR) $<
+
+$(EBIN_DIR)/controller.beam: $(SRC_DIR)/controller.erl $(EBIN_DIR)/node.beam
+	$(ERLC) -o $(EBIN_DIR) $<
+
 
 # Compile test files
 $(EBIN_DIR)/key_gen_test.beam: $(TEST_DIR)/key_gen_test.erl $(EBIN_DIR)/key_gen.beam
