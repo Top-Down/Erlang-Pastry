@@ -10,11 +10,13 @@ init(N, NodeName) ->
     Nodes = spawn_nodes(N, NodeName, []),
     loop(NodeName, Nodes, N).
 
+
 spawn_nodes(0, NodeName, Nodes) -> {NodeName, Nodes};
 spawn_nodes(N, NodeName, Nodes) ->
     NodeAddr = list_to_atom(NodeName),
     NodeId = length(Nodes) + 1,
     Node = "node" ++ integer_to_list(NodeId),
+    create_files(Node),
     case NodeId of
         1 -> Pid = start_node(Node, NodeName);
         _ -> Pid = start_node(Node, NodeName, {{node1, NodeAddr}, "node1"})
@@ -29,6 +31,7 @@ loop(NodeName, Nodes, LastId) ->
             Node = "node" ++ integer_to_list(NewLastId),
             case lists:keyfind(Node, 1, Nodes) of
                 false ->
+                    create_files(Node),
                     Pid = start_node(Node, NodeName, {{node1, NodeName}, "node1"}),
                     loop(NodeName, [{Node, Pid} | Nodes], NewLastId);
                 _ ->
@@ -40,6 +43,7 @@ loop(NodeName, Nodes, LastId) ->
             Node = "node" ++ integer_to_list(NewLastId),
             case lists:keyfind(Node, 1, Nodes) of
                 false ->
+                    create_files(Node),
                     Pid = start_node(Node, NodeName, Starter),
                     loop(NodeName, [{Node, Pid} | Nodes], NewLastId);
                 _ ->
@@ -49,6 +53,7 @@ loop(NodeName, Nodes, LastId) ->
         {spawn, Node, Starter} ->
             case lists:keyfind(Node, 1, Nodes) of
                 false ->
+                    create_files(Node),
                     Pid = start_node(Node, NodeName, Starter),
                     loop(NodeName, [{Node, Pid} | Nodes], LastId);
                 _ ->
@@ -70,3 +75,14 @@ loop(NodeName, Nodes, LastId) ->
         _ ->
             loop(NodeName, Nodes, LastId)
     end.
+
+
+create_files(Node) ->
+    File1 = "./files/" ++ Node ++ "file1.txt",
+    File2 = "./files/" ++ Node ++ "file2.txt",
+    ok = filelib:ensure_dir(File1),
+    ok = filelib:ensure_dir(File2),
+    Content = lists:duplicate(100, Node ++ "file1.txt\n"),
+    ok = file:write_file(File1, Content),
+    Content = lists:duplicate(100, Node ++ "file2.txt\n"),
+    ok = file:write_file(File2, Content).
