@@ -46,11 +46,12 @@ backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet
         Key = hash_name(FileName),
         case full_route(SelfName, RoutingTable, LeafSet, Key) of
             route_end -> 
+                io:format("~p New Owner:~p ~p~n", [SelfName, FromName, FileName]),
                 DestPath = get_file_path(SelfName, FileName),
                 SourcePath = get_backup_path(SelfName, FromName, FileName),
                 move_file(SourcePath, DestPath),
                 backup({SelfAddr, SelfName}, LeafSet, DestPath);
-            {Pid, _} -> 
+            {Pid, _NextName} -> 
                 Pid ! {{SelfAddr, SelfName}, make_ref(), get_time(), {backup_find, FileName, FromName}}
         end
     end, Files).
@@ -60,9 +61,8 @@ backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet
 backup_find({SelfAddr, SelfName}, {FromAddr, FromName}, Msg_id, RoutingTable, LeafSet, FileName, BackupName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
-        route_end ->
-            FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {backup_found, BackupName}};
-            {Pid, _} -> Pid ! {{FromAddr, FromName}, Msg_id, get_time(), {backup_find, FileName, BackupName}}
+        route_end -> FromAddr ! {{SelfAddr, SelfName}, Msg_id, get_time(), {backup_found, FileName, BackupName}};
+        {Pid, _NextName} -> Pid ! {{FromAddr, FromName}, Msg_id, get_time(), {backup_find, FileName, BackupName}}
     end.
 
 

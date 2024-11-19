@@ -57,7 +57,6 @@ init_node(Name, NodeName) ->
   SelfName = Name,
   % Initialize routing table and keepalive list
   RoutingTable = init_routing_table(hash_name(Name)),
-  io:format("~p: Table at init: ~p~n", [SelfName, RoutingTable]),
   KeepAliveList = [],
   {{SelfAddr, SelfName}, RoutingTable, KeepAliveList}.
 

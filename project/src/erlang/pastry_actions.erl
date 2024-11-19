@@ -131,4 +131,5 @@ suicide(SelfInfo, RoutingTable, LeafSet) ->
     Msg = {exit},
     broadcast_leaf(SelfInfo, LeafSet, Msg),
     broadcast_routing(SelfInfo, RoutingTable, Msg),
+    io:format("~p See you space cowboy... ~n", [SelfInfo]),
     exit(normal).

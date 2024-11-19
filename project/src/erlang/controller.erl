@@ -7,8 +7,13 @@ start(ControllerName, N, NodeName) ->
 
 start(ControllerName, N, NodeName, JoinAddr) ->
     JoinAddAtom = list_to_atom(JoinAddr),
+    Dir = "./files",
+    delete_dir(Dir),
+    file:make_dir(Dir),
     Nodes = spawn_nodes(ControllerName, N, NodeName, [], JoinAddAtom),
+    io:format("Nodes:~p ~n", [Nodes]),
     loop(ControllerName, NodeName, Nodes, N).
+
 
 spawn_nodes(_, 0, _NodeName, Nodes, _) -> Nodes;
 spawn_nodes(ControllerName, N, NodeName, Nodes, JoinAddr) ->
@@ -17,11 +22,15 @@ spawn_nodes(ControllerName, N, NodeName, Nodes, JoinAddr) ->
     Node = "node" ++ integer_to_list(NodeId),
     create_files(ControllerName, Node),
     case {JoinAddr, NodeId} of
-        {self, 1} -> Pid = start_node(Node, NodeName);
+        {self, 1} -> 
+            Pid = start_node(Node, NodeName),
+            timer:sleep(500),
+            Pid;
         {self, _} -> Pid = start_node(Node, NodeName, {{node1, NodeAddr}, "node1"});
         {_ , _} -> Pid = start_node(Node, NodeName, {{node1, JoinAddr}, "node1"})
     end,
     spawn_nodes(ControllerName, N - 1, NodeName, [{Node, Pid} | Nodes], JoinAddr).
+
 
 loop(ControllerName, NodeName, Nodes, LastId) ->
     io:format("Controller started. Enter commands:\n", []),
@@ -69,12 +78,15 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
                             loop(ControllerName, NodeName, Nodes, LastId, Buffer)
                     end;
 
-                ["kill_node", Node] ->
+                ["kill", Node] ->
+                    io:format("Node to kill:~p ~n", [Node]),
                     case lists:keyfind(Node, 1, Nodes) of
                         {Node, Pid} ->
+                            io:format("Node found:~p ~n", [Node]),
                             Pid ! kill_node,
                             loop(ControllerName, NodeName, lists:keydelete(Node, 1, Nodes), LastId, Buffer);
                         false ->
+                            io:format("Else no kill~n"),
                             loop(ControllerName, NodeName, Nodes, LastId, Buffer)
                     end;
 
@@ -96,3 +108,26 @@ create_files(ControllerName, Node) ->
     ok = file:write_file(File1, Content1),
     Content2 = lists:duplicate(100, Node ++ "file2.txt\n"),
     ok = file:write_file(File2, Content2).
+
+
+delete_dir(Dir) ->
+    case filelib:is_dir(Dir) of
+        true ->
+            %% Get all entries in the directory
+            Entries = file:list_dir(Dir),
+            case Entries of
+                {ok, Files} ->
+                    %% Recursively delete each entry
+                    lists:foreach(fun(Entry) ->
+                        FullPath = filename:join(Dir, Entry),
+                        case filelib:is_dir(FullPath) of
+                            true -> delete_dir(FullPath);
+                            false -> file:delete(FullPath)
+                        end
+                    end, Files),
+                    %% Delete the directory itself
+                    file:del_dir(Dir);
+                {error, _} -> ok
+            end;
+        false -> ok
+    end.
