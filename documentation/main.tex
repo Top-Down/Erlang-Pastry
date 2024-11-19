@@ -270,6 +270,27 @@ messages and handles them.
 This file is also responsible for creating dummy files per each node, for making the simulation more real.
 Once the Controller is started, it receives in input commands from the user for spawning and killing nodes.
 
+\subsection{Java Web Server}
+
+\subsubsection{ErlangMessageDTO}
+
+\textit{ErlangMessageDTO} is a java class that acts partially as a DTO for the database of this project, which is represented by Pastry.
+This class is then responsible for storing all the information regarding the Erlang Messages for communicating with the distributed system, 
+since the messages to the webserver have all a standard structure.
+
+\subsubsection{ErlangMessage}
+
+\textit{ErlangMessage} is an abstract java class that acts partially as a DAO, since it allows to access both for reads and writes in storage by using 
+Erlang messages. This class implements a set of functions to call in order, used for wrapping, unwrapping, sending and receiving message, and 
+for some integrity checks over the messages. This class also has two abstract methods to get and set the content of the message, which are implemented in 
+classes dedicated to the single message types, since the payload of them differs partially.
+
+\subsubsection{JavaErlangConnector}
+
+\textit{JavaErlangConnector} is a class used to send requests from the webserver and get a response from Pastry.
+After the initialization, in fact, it is necessary to simply call the dedicated function for the web request to get a 
+response; these function do not return \textit{OtpErlangObjects}, in order to isolate those objects only to the layer 
+directly communicating with Erlang, and to make it opaque to the webserver.
 
 
 \begin{figure}[H]
