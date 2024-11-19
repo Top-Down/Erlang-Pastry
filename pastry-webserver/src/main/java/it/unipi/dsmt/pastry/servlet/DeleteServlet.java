@@ -14,7 +14,7 @@ public class DeleteServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		boolean status = false;
+		int status = 1;
 		String fileName = request.getParameter("fileName");
 		
 		long threadId = Thread.currentThread().threadId();
@@ -27,15 +27,20 @@ public class DeleteServlet extends HttpServlet {
         );
 		
 		try {
-			status = connector.delete(fileName);
+			boolean ret = connector.delete(fileName);
+			if(ret) status = 0;
 		}
 		catch(Exception e) {
-			status = false;
+			status = -1;
 			e.printStackTrace();
 		}
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"status\": " + status + "}");
+		if(status == 0) 
+            response.setStatus(HttpServletResponse.SC_OK);
+		else if(status == 1) {
+			response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+		}
+		else
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 	}
 }
