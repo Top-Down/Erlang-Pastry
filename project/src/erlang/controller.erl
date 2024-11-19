@@ -19,7 +19,7 @@ spawn_nodes(ControllerName, N, NodeName, Nodes, JoinAddr) ->
     NodeAddr = list_to_atom(NodeName),
     NodeId = length(Nodes) + 1,
     Node = ControllerName ++ "_node" ++ integer_to_list(NodeId),
-    create_files(ControllerName, Node),
+    create_files(Node),
     case {JoinAddr, NodeId} of
         {self, 1} -> 
             Pid = start_node(Node, NodeName),
@@ -44,13 +44,13 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
             case string:tokens(Line, " \t\n") of
                 ["spawn"] ->
                     NewLastId = LastId + 1,
-                    Node = "node" ++ integer_to_list(NewLastId),
+                    Node = ControllerName ++ "_node" ++ integer_to_list(NewLastId),
                     io:format("Spawn node:~p ~n", [Node]),
                     case lists:keyfind(Node, 1, Nodes) of
                         false ->
-                            create_files(ControllerName, Node),
+                            create_files(Node),
                             NodeAddr = list_to_atom(NodeName),
-                            Pid = start_node(Node, NodeName, {{node1, NodeAddr}, "node1"}),
+                            Pid = start_node(Node, NodeName, {{control1_node1, NodeAddr}, "control1_node1"}),
                             loop(ControllerName, NodeName, [{Node, Pid} | Nodes], NewLastId, Buffer);
                         _ ->
                             loop(ControllerName, NodeName, Nodes, LastId, Buffer)
@@ -58,11 +58,11 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
 
                 ["spawn", Starter] ->
                     NewLastId = LastId + 1,
-                    Node = "node" ++ integer_to_list(NewLastId),
+                    Node = ControllerName ++ "_node" ++ integer_to_list(NewLastId),
                     io:format("Spawn node:~p -> ~p~n", [Node, Starter]),
                     case lists:keyfind(Node, 1, Nodes) of
                         false ->
-                            create_files(ControllerName, Node),
+                            create_files(Node),
                             Pid = start_node(Node, NodeName, Starter),
                             loop(ControllerName, NodeName, [{Node, Pid} | Nodes], NewLastId, Buffer);
                         _ ->
@@ -73,7 +73,7 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
                     io:format("Spawn node:~p -> ~p~n", [Node, Starter]),
                     case lists:keyfind(Node, 1, Nodes) of
                         false ->
-                            create_files(ControllerName, Node),
+                            create_files(Node),
                             Pid = start_node(Node, NodeName, Starter),
                             loop(ControllerName, NodeName, [{Node, Pid} | Nodes], LastId, Buffer);
                         _ ->
@@ -100,9 +100,9 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
     end.
 
 
-create_files(ControllerName, Node) ->
-    File1 = "./files/" ++ Node ++ "/" ++ ControllerName ++ "_" ++ Node ++ "_file1.txt",
-    File2 = "./files/" ++ Node ++ "/" ++ ControllerName ++ "_" ++ Node ++ "_file2.txt",
+create_files(Node) ->
+    File1 = "./files/" ++ Node ++ "/"++ Node ++ "_file1.txt",
+    File2 = "./files/" ++ Node ++ "/"++ Node ++ "_file2.txt",
     ok = filelib:ensure_dir(File1),
     ok = filelib:ensure_dir(File2),
     Content1 = lists:duplicate(100, Node ++ "file1.txt\n"),
