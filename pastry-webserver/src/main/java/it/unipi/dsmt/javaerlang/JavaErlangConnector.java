@@ -110,13 +110,13 @@ public class JavaErlangConnector {
 
     public boolean delete(String fileName) throws Exception {
     	DeleteMessage deleteMsg = new DeleteMessage();
-    	OtpErlangTuple ret = (OtpErlangTuple) this.sendRecvMsg(
+    	OtpErlangAtom ret = (OtpErlangAtom) this.sendRecvMsg(
                 this.pastryMailBox, 
                 this.pastryName, 
                 deleteMsg,
                 new ArrayList<>(List.of(new OtpErlangString(fileName))),
                 DeleteMessage.class);
     	
-        return ((OtpErlangAtom) ret.elementAt(0)).equals(new OtpErlangAtom("true"));
+        return ret.equals(new OtpErlangAtom("true"));
     }
 }

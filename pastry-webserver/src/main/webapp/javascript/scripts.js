@@ -92,7 +92,6 @@ function deleteRequest(fileName, errMsg) {
 	        if(response.ok) errMsg.textContent = OK_DELETE;
 	        else {
 				errMsg.textContent = E_DEL_FAILED;
-				throw new Error(E_DEL_FAILED);
 			}
 	    })
 	    .catch(error => {
