@@ -10,11 +10,13 @@ import jakarta.servlet.http.Part;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import it.unipi.dsmt.javaerlang.JavaErlangConnector;
+import it.unipi.dsmt.pastry.Common;
 
 @WebServlet(name="UploadServlet", value="/upload")
 @MultipartConfig
@@ -24,28 +26,22 @@ public class UploadServlet extends HttpServlet {
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
     	long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"node1@10.2.1.4",
+    		"node1@" + Common.webServerIp,
     		"node1",
     		"pastry",
-    		"webserver_" + String.valueOf(threadId) + "@10.2.1.4",
+    		"webserver_" + String.valueOf(threadId) + "@" + Common.webServerIp,
     		"WebserverMailBox_" + String.valueOf(threadId)
         );
         
         try {
             Part filePart = request.getPart("file");
             String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-            String uploadDir = getServletContext().getRealPath("") + File.separator + "uploads";
             
-            File uploadDirFile = new File(uploadDir);
-            if (!uploadDirFile.exists()) uploadDirFile.mkdirs();
+            // read bytes directly from input stream
+            InputStream inputStream = filePart.getInputStream();
+            byte[] fileBytes = inputStream.readAllBytes();
             
-            String filePath = uploadDir + File.separator + fileName;
-            filePart.write(filePath);
-
-            Path path = Paths.get(filePath);
-            byte[] fileBytes = Files.readAllBytes(path);
             connector.store(fileName, fileBytes);
-
             response.setStatus(HttpServletResponse.SC_OK); // 200 OK
         }
         catch (Exception e) {
