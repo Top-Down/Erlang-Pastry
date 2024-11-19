@@ -1,0 +1,295 @@
+\documentclass{article}
+
+\usepackage[dvipsnames]{xcolor}
+\usepackage{fancyvrb}
+
+% redefine \VerbatimInput
+\RecustomVerbatimCommand{\VerbatimInput}{VerbatimInput}%
+{fontsize=\footnotesize,
+ %
+ frame=lines,  % top and bottom rule only
+ framesep=2em, % separation between frame and text
+ rulecolor=\color{Gray},
+ %
+%  label=\fbox{\color{Black} pict model file.txt},
+ labelposition=topline,
+ %
+ commandchars=\|\(\), % escape character and argument delimiters for
+                      % commands within the verbatim
+ commentchar=\$        % comment character
+}
+\usepackage{listings}
+\usepackage{pdfpages}
+\usepackage{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+\usepackage{braket}
+\usepackage{indentfirst}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage[a4paper]{geometry}
+\usepackage{graphics}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage[export]{adjustbox}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{listings}
+\usepackage{subfiles}
+\usepackage[section]{placeins}
+\usepackage[nottoc,numbib]{tocbibind} 
+\usepackage{hyperref}
+\usepackage{fancyvrb}
+\usepackage{listings}
+\usepackage[detect-none]{siunitx}
+\sisetup{range-phrase = \text{--}}
+\usepackage{xcolor}
+\usepackage{multicol}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\captionsetup{compatibility=false}
+\title{LINFO2345 - Project - Random Peer Sampling}
+
+\begin{document}
+
+
+\begin{titlepage}
+
+     \begin{figure}[H]
+        \includegraphics[width=7cm, center]{images/Stemma_unipi.svg.png}
+        \label{fig:number components}
+    \end{figure}
+
+
+\begin{center}
+    \LARGE{UNIVERSITÀ DI PISA}
+    \vspace{5mm}
+    \\ \LARGE{Distributed Systems and Middleware Technologies}
+\end{center}
+
+\vspace{15mm}
+\begin{center}
+    {\LARGE{\bf Distributed File System with Pastry\\ \vspace{5mm}}}
+    
+    % Se il titolo è abbastanza corto da stare su una riga, si può usare
+    
+    % {\LARGE{\bf Un fantastico titolo per la mia tesi!}}
+\end{center}
+\vspace{20mm}
+
+\begin{center}
+    {\LARGE{{\bf Iacopo Canetta\\ \vspace{5mm}}}}
+    {\LARGE{{\bf Francesco Berti\\ \vspace{5mm}}}}
+\end{center}
+
+\vspace{18mm}
+\hrulefill
+\\\centering{\large{ANNO ACCADEMICO 2024/2025}}
+
+\end{titlepage}
+
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+This project consists in the implementation of a peer-to-peer distributed 
+file storage using a distributed hash table for locating the files among the nodes. 
+The distributed hash table is based on Pastry protocol.
+
+\section{Pastry}
+
+Pastry implements a logical ring of nodes, and each node has an ID. The files are hashed to get a key, 
+and the key is used to identify which node is responsible for that file, 
+checking which one has the longest common prefix. 
+When a file is accessed or stored, a request is sent to the current node. 
+When a node receives a request, it uses a routing table, structured as a tree, 
+for finding the next hop for the request. Every time a row of the routing table is accessed, 
+b bits of the prefix of the key are used to identify the correct column. If the b bits of the 
+prefix are owned by the current node, the next row is visited, 
+otherwise the address of the next hop is retrieved.
+
+
+Whenever an address is not found or the whole table is crossed, an extra table is checked, 
+called leaf set and containing the nodes with id close to the current node; 
+if no node in the leaf set has a longer shared prefix with the key than the current node, 
+then the current node is responsible for the file. 
+This routing table, using N nodes, guarantees a maximum number of hops equal to logn.
+
+\section{Implementation}
+
+The implementation of the system is divided in two parts: one for the distributed file system, 
+created in Erlang, and a webserver realized in Java, also thanks to the Frameworks and implementions of the Java Servlets.
+
+\subsection{Erlang}
+
+The Erlang code is divided in multiple modules, in order to isolate functions and keep them short enough.
+
+\subsubsection{Util.erl, File\_handler.erl, Network.erl}
+
+This files are created for having simple utility functions. \textit{File\_handler.erl} contains the utility functions
+for dealing with files, \textit{Network.erl} contains simple functions for starting the Erlang nodes and settign the cookies, in
+order to receive messages from different machines, and \textit{Util.erl} contains generic utility functions.
+
+\subsubsection{Key\_gen.erl}
+
+\textit{Key\_gen.erl} is the file that implements the key system for Pastry. The keys are generated hashing strings
+and represented as \textit{bitstring}s; this type is chosen because it can be used for
+representing streams of any number of bits, differently from the \textit{binary} type, which is exclusively for 
+multiples of $8$ bits.
+
+\textit{Bitstring}s, however, have little documentation and almost no function dedicated, so \textit{Key\_gen.erl}
+also implements the functions for comparing these numbers and handling them as hexadecimals, since Pastry 
+requires groups of $4$ bits for the routing.
+
+
+\subsubsection{Routing.erl}
+
+\textit{Routing.erl} represents the core of Pastry protocol, implementing the Routing Table.
+The routing table is represented as a Tuple containing the TableKey, so the key of the node owning the table,
+and the table. The table is a list of 32 lists, representing the rows; the single entries of the rows are 
+represented by a tuple containing the hexadecimal identifying the column and the node information.
+
+During the routing or any table modification, instead of doing the whole routing, this approach requires
+of detecting the number of hexadecimals in common in the prefix, which represents the index of the row, and the 
+first hexadecimal not in common, which represent the Column key.
+
+This module contains also the functions for modifying the table and some utility functions relative to it.
+
+\subsubsection{Leaf\_set.erl}
+
+\textit{Leaf\_set.erl} implements the Leaf Set; the Leaf Set is represented as a Tuple of two lists, 
+\textit{Left} and \textit{Right}, representing the two halves of it. The two list contain at most $L2$ elements, 
+represented as tuples key-node information.
+
+
+The module also offerts functions for modifying the leaf set and some utility relative to it.
+
+
+\subsubsection{Node\_actions.erl}
+
+\textit{Node\_actions.erl} implements some utility functions used by the upper modules to interact with files, 
+sending messages, or broadcasting messages to lists, routing tables, or leaf sets.
+
+The most important function is \textit{full\_route()}, which implements the full navigation of the routing table, 
+and, in case of no match or it reaches the bottom, the leaf set is analyzed; the function returns the information
+ of the routed node, or \textit{route\_end} if the current node is responsible for the key in input.
+
+
+\subsubsection{Pastry\_actions.erl}
+
+\textit{Pastry\_actions.erl} implements all the functions for handling the pastry requests and responses
+to the other nodes in the network, plus the handling of the self messages for peridoc events.
+The main functions are:
+
+\begin{itemize}
+    \item \textit{join()}: function used for responding to the \textit{join} message with the routing table row, 
+    and for forwarding the message to the next node of the routing; function used by the node to join the network through another known node;
+    \item \textit{join\_res\_handle()}: function used for updating the routing table and leaf set after a \textit{join\_response};
+    \item \textit{exit()}: function for handling the exit of another node from the network;
+    \item \textit{keepalive()}: sends keepalive to all known nodes;
+    \item \textit{update\_keepalive()}: updates the keepalive of given nodes;
+    \item \textit{keepalive\_res()}: responses to the keepalive to make sure that, even if a node knows another but not viceversa, 
+    the one knowing still receives keepalives from the other;
+    \item \textit{check\_expired\_nodes()}: checks which nodes are disconnected and updates the tables;
+    \item \textit{share\_info()}: shares the info about the nodes with the known nodes;
+\end{itemize}
+
+\subsubsection{Backup\_actions.erl}
+
+\textit{Backup\_actions.erl} implements all the functions for sending and handling the backups.
+For design choice, the backups are kept only by the nodes in the leaf_set.
+
+\begin{itemize}
+    \item \textit{join()}: function used for responding to the \textit{join} message with the routing table row, 
+    and for forwarding the message to the next node of the routing; function used by the node to join the network through another known node;
+    \item \textit{join\_res\_handle()}: function used for updating the routing table and leaf set after a \textit{join\_response};
+    \item \textit{exit()}: function for handling the exit of another node from the network;
+    \item \textit{keepalive()}: sends keepalive to all known nodes;
+    \item \textit{update\_keepalive()}: updates the keepalive of given nodes;
+    \item \textit{keepalive\_res()}: responses to the keepalive to make sure that, even if a node knows another but not viceversa, 
+    the one knowing still receives keepalives from the other;
+    \item \textit{check\_expired\_nodes()}: checks which nodes are disconnected and updates the tables;
+    \item \textit{share\_info()}: shares the info about the nodes with the known nodes;
+\end{itemize}
+
+\section{Testing and Results}
+
+Once Mininet and ONOS are initialized, the network is tested to guarantee 
+that it works as inteneded by the VPLS. The network is tested both with the 
+\textit{ping} and both with a configured broadcast ethernet frame. The 
+broadcast is executed using the python script \textit{frameBroadcaster.py}.
+
+For checking that the VPLS are working as intended, we used \textit{Wireshark},
+ checking which interfaces and devices receive the ethernet frames broadcasted.
+Different topologies were initialized as \textit{net.json} and run. 
+The topologies and some of the screenshots of wireshark are shown below, 
+to prove how only the interfaces in the same VPLS are reached by the broadcast.
+
+
+\begin{figure}[H]
+    \includegraphics[width=10cm, center]{images/1-topo.png}
+    \label{fig:1topo}
+    \caption{Topology 1}
+\end{figure}
+
+
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/1-reached.png}
+    \label{fig:1reac}
+    \caption{Broadcast example 1: servers reached}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/1-unreached.png}
+    \label{fig:1unreac}
+    \caption{Broadcast example 1: all other interfaces not reached}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=10cm, center]{images/2-topo.png}
+    \label{fig:2topo}
+    \caption{Topology 2}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/2-reached.png}
+    \label{fig:2reac}
+    \caption{Broadcast example 2: servers reached}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/2-unreached.png}
+    \label{fig:2unreac}
+    \caption{Broadcast example 2: all other interfaces not reached}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=10cm, center]{images/3-topo.png}
+    \label{fig:3topo}
+    \caption{Topology 3}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/3-reached.png}
+    \label{fig:3reac}
+    \caption{Broadcast example 3: servers reached}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/3-unreached.png}
+    \label{fig:3unreac}
+    \caption{Broadcast example 3: all other interfaces not reached}
+\end{figure}
+
+
+\end{document}
