@@ -11,7 +11,6 @@ start(ControllerName, N, NodeName, JoinAddr) ->
     delete_dir(Dir),
     file:make_dir(Dir),
     Nodes = spawn_nodes(ControllerName, N, NodeName, [], JoinAddAtom),
-    io:format("Nodes:~p ~n", [Nodes]),
     loop(ControllerName, NodeName, Nodes, N).
 
 
@@ -46,6 +45,7 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
                 ["spawn"] ->
                     NewLastId = LastId + 1,
                     Node = "node" ++ integer_to_list(NewLastId),
+                    io:format("Spawn node:~p ~n", [Node]),
                     case lists:keyfind(Node, 1, Nodes) of
                         false ->
                             create_files(ControllerName, Node),
@@ -59,6 +59,7 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
                 ["spawn", Starter] ->
                     NewLastId = LastId + 1,
                     Node = "node" ++ integer_to_list(NewLastId),
+                    io:format("Spawn node:~p -> ~p~n", [Node, Starter]),
                     case lists:keyfind(Node, 1, Nodes) of
                         false ->
                             create_files(ControllerName, Node),
@@ -69,6 +70,7 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
                     end;
 
                 ["spawn", Node, Starter] ->
+                    io:format("Spawn node:~p -> ~p~n", [Node, Starter]),
                     case lists:keyfind(Node, 1, Nodes) of
                         false ->
                             create_files(ControllerName, Node),
@@ -79,14 +81,12 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
                     end;
 
                 ["kill", Node] ->
-                    io:format("Node to kill:~p ~n", [Node]),
+                    io:format("Kill node:~p ~n", [Node]),
                     case lists:keyfind(Node, 1, Nodes) of
                         {Node, Pid} ->
-                            io:format("Node found:~p ~n", [Node]),
                             Pid ! kill_node,
                             loop(ControllerName, NodeName, lists:keydelete(Node, 1, Nodes), LastId, Buffer);
                         false ->
-                            io:format("Else no kill~n"),
                             loop(ControllerName, NodeName, Nodes, LastId, Buffer)
                     end;
 
@@ -94,6 +94,7 @@ loop(ControllerName, NodeName, Nodes, LastId, Buffer) ->
                     ok;
 
                 _ ->
+                    io:format("Command unknown ~n"),
                     loop(ControllerName, NodeName, Nodes, LastId, Buffer)
             end
     end.
