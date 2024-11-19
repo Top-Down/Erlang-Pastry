@@ -18,15 +18,15 @@ spawn_nodes(_, 0, _NodeName, Nodes, _) -> Nodes;
 spawn_nodes(ControllerName, N, NodeName, Nodes, JoinAddr) ->
     NodeAddr = list_to_atom(NodeName),
     NodeId = length(Nodes) + 1,
-    Node = "node" ++ integer_to_list(NodeId),
+    Node = ControllerName ++ "_node" ++ integer_to_list(NodeId),
     create_files(ControllerName, Node),
     case {JoinAddr, NodeId} of
         {self, 1} -> 
             Pid = start_node(Node, NodeName),
             timer:sleep(500),
             Pid;
-        {self, _} -> Pid = start_node(Node, NodeName, {{node1, NodeAddr}, "node1"});
-        {_ , _} -> Pid = start_node(Node, NodeName, {{node1, JoinAddr}, "node1"})
+        {self, _} -> Pid = start_node(Node, NodeName, {{control1_node1, NodeAddr}, "control1_node1"});
+        {_ , _} -> Pid = start_node(Node, NodeName, {{control1_node1, JoinAddr}, "control1_node1"})
     end,
     spawn_nodes(ControllerName, N - 1, NodeName, [{Node, Pid} | Nodes], JoinAddr).
 
