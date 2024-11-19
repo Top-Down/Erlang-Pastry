@@ -36,10 +36,10 @@ public class FileGetterServlet extends HttpServlet {
         
         long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"node1@10.2.1.4",
+    		"node1@" + Common.webServerIp,
     		"node1",
     		"pastry",
-    		"webserver_" + String.valueOf(threadId) + "@10.2.1.4",
+    		"webserver_" + String.valueOf(threadId) + "@" + Common.webServerIp,
     		"WebserverMailBox_" + String.valueOf(threadId)
         );
 

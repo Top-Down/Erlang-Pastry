@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import it.unipi.dsmt.javaerlang.JavaErlangConnector;
+import it.unipi.dsmt.pastry.Common;
 
 @WebServlet(name="DeleteServlet", value="/delete")
 public class DeleteServlet extends HttpServlet {
@@ -18,10 +19,10 @@ public class DeleteServlet extends HttpServlet {
 		
 		long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"node1@10.2.1.4",
+    		"node1@" + Common.webServerIp,
     		"node1",
     		"pastry",
-    		"webserver_" + String.valueOf(threadId) + "@10.2.1.4",
+    		"webserver_" + String.valueOf(threadId) + "@" + Common.webServerIp,
     		"WebserverMailBox_" + String.valueOf(threadId)
         );
 		
