@@ -42,11 +42,11 @@ public class UploadServlet extends HttpServlet {
             byte[] fileBytes = inputStream.readAllBytes();
             
             connector.store(fileName, fileBytes);
-            response.setStatus(HttpServletResponse.SC_OK); // 200 OK
+            response.setStatus(HttpServletResponse.SC_OK);
         }
         catch (Exception e) {
             e.printStackTrace();
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR); // 500
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 }
