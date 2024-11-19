@@ -3,10 +3,11 @@
 -import(node, [start_node/2, start_node/3]).
 
 start(ControllerName, N, NodeName) ->
-    start(ControllerName, N, NodeName, self).
+    start(ControllerName, N, NodeName, "self").
 
 start(ControllerName, N, NodeName, JoinAddr) ->
-    Nodes = spawn_nodes(ControllerName, N, NodeName, [], JoinAddr),
+    JoinAddAtom = list_to_atom(JoinAddr),
+    Nodes = spawn_nodes(ControllerName, N, NodeName, [], JoinAddAtom),
     loop(ControllerName, NodeName, Nodes, N).
 
 spawn_nodes(_, 0, _NodeName, Nodes, _) -> Nodes;
