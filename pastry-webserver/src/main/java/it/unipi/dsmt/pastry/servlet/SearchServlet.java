@@ -31,8 +31,8 @@ public class SearchServlet extends HttpServlet {
         boolean fileFound = false;
         long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"node1@" + Common.webServerIp,
-    		"node1",
+    		"control1_node1@" + Common.webServerIp,
+    		"control1_node1",
     		"pastry",
     		"webserver_" + String.valueOf(threadId) + "@" + Common.webServerIp,
     		"WebserverMailBox_" + String.valueOf(threadId)
