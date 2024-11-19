@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1732009455.85839 "c:/Users/Iacopo/Documents/UNIPI/Magistrale/Ongoing/Distributed/Erlang-Pastry/documentation/main.tex" "main.pdf" "main" 1732009458.83766 0
-  "c:/Users/Iacopo/Documents/UNIPI/Magistrale/Ongoing/Distributed/Erlang-Pastry/documentation/main.tex" 1732009455 13296 10b16a36631ad8336c6c0857e921fb63 ""
+["pdflatex"] 1732011711.12485 "c:/Users/Iacopo/Documents/UNIPI/Magistrale/Ongoing/Distributed/Erlang-Pastry/documentation/main.tex" "main.pdf" "main" 1732011712.72953 0
+  "c:/Users/Iacopo/Documents/UNIPI/Magistrale/Ongoing/Distributed/Erlang-Pastry/documentation/main.tex" 1732011709 12584 d798a50b9aac762b1a84892adb90e9e7 ""
   "c:/texlive/2024/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc" 1719046567 2405 5dcf2c1b967ee25cc46c58cd52244aed ""
   "c:/texlive/2024/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc" 1719046567 2327 9d6df24f9c4f7368395224341a95523a ""
   "c:/texlive/2024/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc" 1719046567 3031 6c4d3515bf7115d8518af1c9ab97ca44 ""
@@ -204,20 +204,12 @@
   "c:/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1719046926 329816 049d4c960572b17b06baa06c63159a80 ""
   "c:/texlive/2024/texmf-var/web2c/pdftex/pdflatex.fmt" 1719046938 6879100 69987c3c72f8cc53befd8ea77feeb459 ""
   "c:/texlive/2024/texmf.cnf" 1719046923 713 e69b156964470283e0530f5060668171 ""
-  "images/1-reached.png" 1720012605 532630 ea1d0013bcc6dd5991aa0669e96eb751 ""
-  "images/1-topo.png" 1720012622 66609 036a1c3319552512e450cf1eb8f6c5a1 ""
-  "images/1-unreached.png" 1720012613 108493 91e68420cb0644045abf2f726adc80bc ""
-  "images/2-reached.png" 1720012632 513786 5c4f09c04085ab6f9975409c542ca75a ""
-  "images/2-topo.png" 1720013752 69785 05857c5a3bdaff73b0f515a6fc51bc87 ""
-  "images/2-unreached.png" 1720012640 116937 f0f9e281b625d42665e91f0ed12c5ab5 ""
-  "images/3-reached.png" 1720012649 413662 a1af910b5c794e2983282362888940ee ""
-  "images/3-topo.png" 1720013869 76977 59ddef762aa6afb5b31ff46a8467df14 ""
   "images/3-unreached.png" 1720012655 108774 adc2743f52577bd803a9c9d83826dc82 ""
   "images/Stemma_unipi.svg.png" 1719045274 229047 a1f3d202ec122b6b1ef92f0139828ca3 ""
-  "main.aux" 1732009458 4467 3361e2d6d8347e18532b2711d1931a3c "pdflatex"
-  "main.out" 1732009458 1797 80f5aaeb81022bd8ca86bbc8a0164c6d "pdflatex"
-  "main.tex" 1732009455 13296 10b16a36631ad8336c6c0857e921fb63 ""
-  "main.toc" 1732009458 1130 5af2bd4872b39da380c61c736fea6e70 "pdflatex"
+  "main.aux" 1732011712 2614 e682994f5679373fcce76d9461b58b5c "pdflatex"
+  "main.out" 1732011712 2026 ee5cc0ce1926c01353148c29c8831269 "pdflatex"
+  "main.tex" 1732011709 12584 d798a50b9aac762b1a84892adb90e9e7 ""
+  "main.toc" 1732011712 1320 10322935c52002af7c165ca6359bc79a "pdflatex"
   (generated)
   "main.aux"
   "main.log"

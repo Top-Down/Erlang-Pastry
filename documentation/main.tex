@@ -204,6 +204,12 @@ The main functions are:
     \item \textit{share\_info()}: shares the info about the nodes with the known nodes.
 \end{itemize}
 
+\subsubsection{File System}
+
+The files in this project, since it is run on a limited number of machines, are stored all in a \textit{/files} folder.
+The folder contains a subfolder per each node, which contains the files owned by the node and a folder \textit{/backup}, storing a folder
+per each node with their files backed up.
+
 \subsubsection{Backup\_actions.erl}
 
 \textit{Backup\_actions.erl} implements all the functions for sending and handling the backups.
@@ -248,68 +254,23 @@ The main functions are:
     \item \textit{check\_expired\_blacklist()}: function called periodically for cleaning the expired entries of the blacklist.
 \end{itemize}
 
-\section{Testing and Results}
-
-Once Mininet and ONOS are initialized, the network is tested to guarantee 
-that it works as inteneded by the VPLS. The network is tested both with the 
-\textit{ping} and both with a configured broadcast ethernet frame. The 
-broadcast is executed using the python script \textit{frameBroadcaster.py}.
-
-For checking that the VPLS are working as intended, we used \textit{Wireshark},
- checking which interfaces and devices receive the ethernet frames broadcasted.
-Different topologies were initialized as \textit{net.json} and run. 
-The topologies and some of the screenshots of wireshark are shown below, 
-to prove how only the interfaces in the same VPLS are reached by the broadcast.
 
 
-\begin{figure}[H]
-    \includegraphics[width=10cm, center]{images/1-topo.png}
-    \label{fig:1topo}
-    \caption{Topology 1}
-\end{figure}
+\subsubsection{Node.erl}
+
+\textit{Node.erl} implements a Node of the Pastry network. Nodes are started with the function \textit{start\_node()}, requiring the name
+and the name of their Erlang node, in order to register their mailbox and be reachable; the new node also initializes Pastry's tables.
+If \textit{Starter} is defined, the node uses the starter node to join the network, sending a join message.
+At the end of the initialization, all periodical self messages are scheduled and the node enters an infinite loop, in which it just receives
+messages and handles them.
+
+\subsubsection{Controller.erl}
+
+\textit{Controller.erl} is a simulation file used for spawning multiple nodes on one single erlang node and connecting them to the Pastry network.
+This file is also responsible for creating dummy files per each node, for making the simulation more real.
+Once the Controller is started, it receives in input commands from the user for spawning and killing nodes.
 
 
-\begin{figure}[H]
-    \includegraphics[width=12cm, center]{images/1-reached.png}
-    \label{fig:1reac}
-    \caption{Broadcast example 1: servers reached}
-\end{figure}
-
-\begin{figure}[H]
-    \includegraphics[width=12cm, center]{images/1-unreached.png}
-    \label{fig:1unreac}
-    \caption{Broadcast example 1: all other interfaces not reached}
-\end{figure}
-
-\begin{figure}[H]
-    \includegraphics[width=10cm, center]{images/2-topo.png}
-    \label{fig:2topo}
-    \caption{Topology 2}
-\end{figure}
-
-\begin{figure}[H]
-    \includegraphics[width=12cm, center]{images/2-reached.png}
-    \label{fig:2reac}
-    \caption{Broadcast example 2: servers reached}
-\end{figure}
-
-\begin{figure}[H]
-    \includegraphics[width=12cm, center]{images/2-unreached.png}
-    \label{fig:2unreac}
-    \caption{Broadcast example 2: all other interfaces not reached}
-\end{figure}
-
-\begin{figure}[H]
-    \includegraphics[width=10cm, center]{images/3-topo.png}
-    \label{fig:3topo}
-    \caption{Topology 3}
-\end{figure}
-
-\begin{figure}[H]
-    \includegraphics[width=12cm, center]{images/3-reached.png}
-    \label{fig:3reac}
-    \caption{Broadcast example 3: servers reached}
-\end{figure}
 
 \begin{figure}[H]
     \includegraphics[width=12cm, center]{images/3-unreached.png}
