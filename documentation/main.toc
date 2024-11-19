@@ -18,3 +18,13 @@
 \contentsline {subsubsection}{\numberline {3.2.1}ErlangMessageDTO}{5}{subsubsection.3.2.1}%
 \contentsline {subsubsection}{\numberline {3.2.2}ErlangMessage}{5}{subsubsection.3.2.2}%
 \contentsline {subsubsection}{\numberline {3.2.3}JavaErlangConnector}{5}{subsubsection.3.2.3}%
+\contentsline {subsubsection}{\numberline {3.2.4}WebServer}{5}{subsubsection.3.2.4}%
+\contentsline {subsubsection}{\numberline {3.2.5}SearchServlet}{5}{subsubsection.3.2.5}%
+\contentsline {subsubsection}{\numberline {3.2.6}DownloadServlet}{5}{subsubsection.3.2.6}%
+\contentsline {subsubsection}{\numberline {3.2.7}UploadServlet}{5}{subsubsection.3.2.7}%
+\contentsline {subsubsection}{\numberline {3.2.8}DeleteServlet}{6}{subsubsection.3.2.8}%
+\contentsline {subsubsection}{\numberline {3.2.9}FileGetterServlet}{6}{subsubsection.3.2.9}%
+\contentsline {subsubsection}{\numberline {3.2.10}JavaErlangConnector}{6}{subsubsection.3.2.10}%
+\contentsline {subsubsection}{\numberline {3.2.11}Cleaner}{6}{subsubsection.3.2.11}%
+\contentsline {subsubsection}{\numberline {3.2.12}SemaphoreManager}{6}{subsubsection.3.2.12}%
+\contentsline {subsection}{\numberline {3.3}Bash scripts}{6}{subsection.3.3}%

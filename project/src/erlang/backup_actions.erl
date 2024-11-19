@@ -46,7 +46,6 @@ backup_update({SelfAddr, SelfName}, {_FromAddr, FromName}, RoutingTable, LeafSet
         Key = hash_name(FileName),
         case full_route(SelfName, RoutingTable, LeafSet, Key) of
             route_end -> 
-                io:format("~p New Owner:~p ~p~n", [SelfName, FromName, FileName]),
                 DestPath = get_file_path(SelfName, FileName),
                 SourcePath = get_backup_path(SelfName, FromName, FileName),
                 move_file(SourcePath, DestPath),

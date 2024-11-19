@@ -24,3 +24,6 @@ target/
 *.beam
 out
 project/erl_crash.dump
+
+#other files
+project/files/*

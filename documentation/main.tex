@@ -292,6 +292,58 @@ After the initialization, in fact, it is necessary to simply call the dedicated 
 response; these function do not return \textit{OtpErlangObjects}, in order to isolate those objects only to the layer 
 directly communicating with Erlang, and to make it opaque to the webserver.
 
+\subsubsection{WebServer}
+
+The webserver is implemented via \textit{Java servlets} and \textit{Tomcat webserver}. There are three packages:
+
+\begin{itemize}
+    \item \textit{pastry}: contains all the servlet responsible for creating responses for the various endpoints
+    \item \textit{javaerlang}: contains all classes mentioned above in the \textit{Java Web Server} section, these are used by servlets to obtain data from \textit{pastry}
+    \item \textit{cleaner}: contains classes to periodically clean the \textit{files} directory in the webserver
+\end{itemize}
+
+\subsubsection{SearchServlet}
+This servlet extends a \textit{HttpServlet} and it's mapped to endpoint \textit{/search}. Once a \textit{GET} request is received, the servlet opens a connection with \textit{Erlang} via \textit{JavaErlangConnector} and then calls the method \textit{find()} with the filename extracted from the URL.
+\newline
+If the file is found, it's saved in the \textit{files} directory of the webserver and the positive response is returned to the client in form of \textit{JSON}. The \textit{files} directory is there simply to avoid making two requests to \textit{pastry}, the first one when the client searches the file and the second one when it downloads a file. By storing the file locally, the second request is avoided.
+
+\subsubsection{DownloadServlet}
+When this servlet receives a \textit{GET} request on \textit{/download}, it will look into the \textit{"files"} directory for the file specified in the request parameter. If the file exists, it will copy the binary data in the response using the \textit{MIME} type \textit{"application/octet-stream"}. If the file does not exist, it will return a JSON with an error.
+
+\subsubsection{UploadServlet}
+This servlet responds to a \textit{PUT} request on \textit{/upload}. The request will contain the file name and the relative binary data. The servlet will extract the file name and binary data from the request and pass them to the method \textit{store} of \textit{ErlangJavaConnector}. If the file is successfully stored, it will return a \textit{201 Created} status code. If there is an error during the storage process, it will return a \textit{500 Internal Server Error} status code.
+
+\subsubsection{DeleteServlet}
+This servlet, when receiving a \textit{DELETE} request at the endpoint \textit{/delete}, will extract the file name from the request object. It will then call the \textit{delete()} method of \textit{ErlangJavaConnector} passing the extracted file name. If the file is successfully deleted, it will return a \textit{200 OK} status code. If the file does not exist or there is an error during the deletion process, it will return a \textit{404 Not Found} or \textit{500 Internal Server Error} status code, respectively.
+
+\subsubsection{FileGetterServlet}
+This servlet responds to the \textit{GET} request on endpoint \textit{/allfiles}. It will call a method to retrieve the list of all file names present in the current \textit{pastry} instance. The servlet will then return a \textit{JSON} object with an array \textit{names} containing the file names. If there is an error during the retrieval process, it will return a \textit{500 Internal Server Error} status code.
+
+\subsubsection{JavaErlangConnector}
+\textit{JavaErlangConnector} is the class used to send requests from the webserver and get a response from Pastry. The constructor takes in input various arguments:
+\begin{itemize}
+    \item \textit{pastryNameIn}: name of the Erlang node to connect to, it can be any Erlang node. This implies that the system can be made fault-tolerant but for simplicity the same node is always used.
+    \item \textit{pastryMailBoxIn}: name of the mailbox of the previously mentioned Erlang node
+    \item \textit{cookieIn}: always \textit{"pastry"}
+    \item \textit{selfNameIn}: the name of the Erlang node that will be created to communicate with Pastry, it has to be unique so it includes threadId
+    \item \textit{selfMailboxNameIn}: name of the mailbox for this node, it has to be unique so it includes threadId
+\end{itemize}
+Each time a new request is made and to fulfill that request a communication with Pastry is necessary, a new \textit{JavaErlangConnector} instance is created. This is to ensure that requests are handled concurrently, the alternative would be to use a singleton shared across the servlets which would result in a performance hit. 
+
+\subsubsection{Cleaner}
+The \textit{"files"} directory used by the webserver to temporarily hold files searched by user is cleaned by a periodic task. The period is defined in the \textit{Common} class, which also contains a method to get the full path of the \textit{files} directory in the environment which is running \textit{Tomcat}.
+\newline
+The \textit{cleaner} uses a \textit{ServletContextListener} to create an executor and spawn a single thread, which will run periodically, when the context is initialized. The executor will be shutdown once the context is destroyed.
+
+\subsubsection{SemaphoreManager}
+Since there are at least two threads working on the \textit{files} directory, \textit{DownloadServlet} and \textit{Cleaner}, a semaphore is used to ensure mutual exclusion when making changes to this directory. The double check lock paradigm was used since this is a multithreaded environment.
+
+\subsection{Bash scripts}
+Two scripts are used to easily deploy this application:
+\begin{itemize}
+    \item \textit{deploy.sh}: copies the \textit{erlang src} files as well as the \textit{WAR} file into the containers via \textit{"scp"}
+    \item \textit{start.sh}: creates three terminals, connects via \textit{ssh} to the \textit{VMs}, starts \textit{erlang controllers} and \textit{tomcat}
+\end{itemize}
 
 \begin{figure}[H]
     \includegraphics[width=12cm, center]{images/3-unreached.png}
