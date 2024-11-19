@@ -23,3 +23,4 @@ target/
 .idea/
 *.beam
 out
+project/erl_crash.dump
