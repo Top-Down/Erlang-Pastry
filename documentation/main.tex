@@ -118,6 +118,19 @@ b bits of the prefix of the key are used to identify the correct column. If the 
 prefix are owned by the current node, the next row is visited, 
 otherwise the address of the next hop is retrieved.
 
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/pastry_rt.png}
+    \label{fig:3unac}
+    \caption{Routing table}
+\end{figure}
+
+
+\begin{figure}[H]
+    \includegraphics[width=12cm, center]{images/pastry_routing.png}
+    \label{fig:3unreac}
+    \caption{Routing example}
+\end{figure}
+
 
 Whenever an address is not found or the whole table is crossed, an extra table is checked, 
 called leaf set and containing the nodes with id close to the current node; 
@@ -345,11 +358,6 @@ Two scripts are used to easily deploy this application:
     \item \textit{start.sh}: creates three terminals, connects via \textit{ssh} to the \textit{VMs}, starts \textit{erlang controllers} and \textit{tomcat}
 \end{itemize}
 
-\begin{figure}[H]
-    \includegraphics[width=12cm, center]{images/3-unreached.png}
-    \label{fig:3unreac}
-    \caption{Broadcast example 3: all other interfaces not reached}
-\end{figure}
 
 
 \end{document}
