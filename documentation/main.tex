@@ -201,25 +201,51 @@ The main functions are:
     \item \textit{keepalive\_res()}: responses to the keepalive to make sure that, even if a node knows another but not viceversa, 
     the one knowing still receives keepalives from the other;
     \item \textit{check\_expired\_nodes()}: checks which nodes are disconnected and updates the tables;
-    \item \textit{share\_info()}: shares the info about the nodes with the known nodes;
+    \item \textit{share\_info()}: shares the info about the nodes with the known nodes.
 \end{itemize}
 
 \subsubsection{Backup\_actions.erl}
 
 \textit{Backup\_actions.erl} implements all the functions for sending and handling the backups.
-For design choice, the backups are kept only by the nodes in the leaf_set.
+For design choice, the backups are propagated to the whole leaf set and updated according to it.
+The main functions are:
 
 \begin{itemize}
-    \item \textit{join()}: function used for responding to the \textit{join} message with the routing table row, 
-    and for forwarding the message to the next node of the routing; function used by the node to join the network through another known node;
-    \item \textit{join\_res\_handle()}: function used for updating the routing table and leaf set after a \textit{join\_response};
-    \item \textit{exit()}: function for handling the exit of another node from the network;
-    \item \textit{keepalive()}: sends keepalive to all known nodes;
-    \item \textit{update\_keepalive()}: updates the keepalive of given nodes;
-    \item \textit{keepalive\_res()}: responses to the keepalive to make sure that, even if a node knows another but not viceversa, 
-    the one knowing still receives keepalives from the other;
-    \item \textit{check\_expired\_nodes()}: checks which nodes are disconnected and updates the tables;
-    \item \textit{share\_info()}: shares the info about the nodes with the known nodes;
+    \item \textit{backup()}: function used for propagating a file to the leaf set for backup;
+    \item \textit{backup\_res()}: function used for saving a backup sent by other node;
+    \item \textit{backup\_remove()}: function used to communicate the leaf set to remove a file from backup;
+    \item \textit{new\_leaf\_backup()}: function used to check if a node is added to the new leaf set, 
+    and in that case it receives a backup of each file;
+    \item \textit{old\_leaf\_backup()}: function used to check if a node is removed from the new leaf set, 
+    and in that case it receives a message to delete the backup folder;
+    \item \textit{update\_leaf\_backup()}: function used for checking in a list of nodes which
+    ones entered the leaf set and which ones exited, in order to propagate or remove backups;
+    \item \textit{backup\_update()}: function used to update the owner of the backups of a failed node.
+    The routing is performed and, if the current node is the owner, the node moves the files to its folder,
+    otherwise it forwards the request;
+    \item \textit{backup\_find()}: request to find the owner of a file. If reaches the end, a \textit{backup\_found} 
+    response is sent;
+    \item \textit{backup\_found()}: updates the owner of a file on a \textit{backup\_found}.
+\end{itemize}
+
+
+\subsubsection{Web\_responses.erl}
+
+\textit{Web\_responses.erl} implements all the functions for handling and responding to the webserver.
+The main functions are:
+
+\begin{itemize}
+    \item \textit{find\_store()}: function that, given a filename, finds a storage for it using pastry routing and responds
+    to the web server;
+    \item \textit{store()}: function that, given a filename, it stores it on the node;
+    \item \textit{find()}: function that finds a file and sends it back to the webserver;
+    \item \textit{delete()}: function that, given a filename, finds for it using pastry routing, deletes it,
+    and sends and ack to the web server;
+    \item \textit{get\_file\_res()}: function that starts a flooding for retrieving all the names of the files
+    in the network; it uses a blacklist on the \textit{Msg\_Id} for avoiding infinite flooding; 
+    \item \textit{get\_files\_res\_handle()}: function that updates the list of files with the new nodes received during the flooding;
+    \item \textit{all\_files\_res()}: function that responds to the webserver with the list of files;
+    \item \textit{check\_expired\_blacklist()}: function called periodically for cleaning the expired entries of the blacklist.
 \end{itemize}
 
 \section{Testing and Results}
