@@ -26,8 +26,8 @@ public class UploadServlet extends HttpServlet {
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
     	long threadId = Thread.currentThread().threadId();
         JavaErlangConnector connector = new JavaErlangConnector(
-    		"node1@" + Common.webServerIp,
-    		"node1",
+    		"control1_node1@" + Common.webServerIp,
+    		"control1_node1",
     		"pastry",
     		"webserver_" + String.valueOf(threadId) + "@" + Common.webServerIp,
     		"WebserverMailBox_" + String.valueOf(threadId)
