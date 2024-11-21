@@ -6,12 +6,15 @@
 -export([init_routing_table/1, route_key/2, print_routing_table/1, add_node/2, remove_node/2, get_row/2, update_routing/2, get_all_routes/1]).
 
 
+%inits routing table with empty rows
 init_routing_table(<<NodeKey/bitstring>>) ->
     NumRows = hex_length(NodeKey),
     Table = [ [] || _ <- lists:seq(1, NumRows)],
     {NodeKey, Table}.
 
 
+%routes a key. 
+%Returns self, no match, or nodeInfo if a node is found
 route_key(Key, {Key, _Table}) ->
     {self, self};
 route_key(Key, {TableKey, Table}) ->
@@ -25,11 +28,13 @@ route_key(Key, {TableKey, Table}) ->
     end.
 
 
+%prints routing table
 print_routing_table({TableKey, Table}) ->
     io:format("NodeKey: ~p~n", [TableKey]),
     lists:foreach(fun(Row) -> io:format("~p~n", [Row]) end, Table).
 
 
+%retrieves the Ith row of the table
 get_row({TableKey, Table}, I) ->
     MaxRow = hex_length(TableKey),
     if
@@ -41,6 +46,7 @@ get_row({TableKey, Table}, I) ->
     end.
 
 
+%adds node to the routing table
 add_node({NodePid, NodeName}, {TableKey, Table}) ->
     <<Key/bitstring>> = hash_name(NodeName),
     
@@ -63,6 +69,7 @@ add_node({NodePid, NodeName}, {TableKey, Table}) ->
     end.
 
 
+%removes node from the table if exists
 remove_node({_NodePid, NodeName}, {TableKey, Table}) ->
     <<Key/bitstring>> = hash_name(NodeName),
     
@@ -85,7 +92,7 @@ remove_node({_NodePid, NodeName}, {TableKey, Table}) ->
     end.
 
 
-
+%given a list, updates adds all the nodes
 update_routing(RoutingTable, Nodes) ->
     RoutingTable1 = lists:foldl(fun(OtherNode, RT) -> 
         add_node(OtherNode, RT)
@@ -93,6 +100,7 @@ update_routing(RoutingTable, Nodes) ->
     RoutingTable1.
 
 
+%gets all nodes in the routing table
 get_all_routes({_TableKey, Table}) ->
     [Node || Row <- Table, {_, Node} <- Row].
 

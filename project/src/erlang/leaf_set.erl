@@ -6,6 +6,7 @@
 -export([add_leaf/4, remove_leaf/3, closest_node/3, update_leaf_set/4]).
 
 
+%adds node to a list
 add_to_list(List, MaxLen, Element, RemoveFun) ->
     case lists:member(Element, List) of
         true ->
@@ -21,6 +22,7 @@ add_to_list(List, MaxLen, Element, RemoveFun) ->
             end
     end.
 
+%adds leaf in the right list
 add_leaf(LeafSet, _, {_NodePid, NodeName}, SelfName) 
   when NodeName =:= SelfName -> 
     LeafSet;
@@ -42,6 +44,7 @@ add_leaf({Left, Right}, L2, {NodePid, NodeName}, SelfName) ->
     end.
 
 
+%remove leaf if exists
 remove_leaf(LeafSet, {_NodePid, NodeName}, _SelfName) 
   when not is_list(NodeName) -> 
     LeafSet;
@@ -58,12 +61,17 @@ remove_leaf({Left, Right}, {NodePid, NodeName}, SelfName) ->
             {Left, NewRight}
     end.
 
+
+%given a lsits, adds all the leafs
 update_leaf_set([], LeafSet, _, _) ->
     LeafSet;
 update_leaf_set([H|T], LeafSet, L2, SelfName) ->
     NewSet = add_leaf(LeafSet, L2, H, SelfName),
     update_leaf_set(T, NewSet, L2, SelfName).
 
+
+%finds closest ndoe to a key
+%if self is the closes, returns self
 closest_node({Left, Right}, Key, SelfName) ->
     AllNodes = Left ++ Right,
     SelfKey = hash_name(SelfName),

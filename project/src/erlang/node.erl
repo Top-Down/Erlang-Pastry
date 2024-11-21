@@ -27,6 +27,7 @@
 -define(L2, 8).
 
 
+%start a node
 start_node(Name, NodeName) ->
   spawn(fun() -> bootstrap_node(Name, NodeName) end).
 start_node(Name, NodeName, Starter) ->
@@ -34,7 +35,7 @@ start_node(Name, NodeName, Starter) ->
 start_node(Name, NodeName, Starter, LeafSet) ->
   spawn(fun() -> bootstrap_node(Name, NodeName, Starter, LeafSet) end).
 
-
+%node lifecycle
 bootstrap_node(Name, NodeName) ->
     bootstrap_node(Name, NodeName, undefined, {[], []}).
 bootstrap_node(Name, NodeName, Starter) ->
@@ -49,6 +50,7 @@ bootstrap_node(Name, NodeName, Starter, LeafSet) ->
     node_loop(NewRoutingTable, NewLeafSet, KeepAliveList, SelfInfo, [], []).
 
 
+%initializes node parameters
 init_node(Name, NodeName) ->
   % Start the node with a name and cookie
   Cookie = "pastry",
@@ -61,6 +63,7 @@ init_node(Name, NodeName) ->
   {{SelfAddr, SelfName}, RoutingTable, KeepAliveList}.
 
 
+%joins pastry network
 join_net(_, undefined,RoutingTable, LeafSet, _) ->
   {RoutingTable, LeafSet};
 join_net({SelfAddr, SelfName}, {StarterPid, StarterName}, RoutingTable, {L, R}, L2) ->
@@ -71,7 +74,7 @@ join_net({SelfAddr, SelfName}, {StarterPid, StarterName}, RoutingTable, {L, R}, 
     {NewRoutingTable, NewLeafSet}.
 
 
-% Main loop for the provider node
+% Main loop for the node. Receives and loops
 node_loop(RoutingTable, LeafSet, KeepAliveList, SelfInfo, FilesList, BlackList) ->
   receive
     {From, Msg_id, Timestamp, {find, File}} ->

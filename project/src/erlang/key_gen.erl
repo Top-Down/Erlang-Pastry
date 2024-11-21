@@ -19,23 +19,26 @@ shared_prefix(<<H1:1, T1/bitstring>>, <<H2:1, T2/bitstring>>, Acc, Length) when 
 shared_prefix(_, _, Acc, Length) -> {Length, Acc}.
 
 
+%finds the longest common prefix in hexadecimal
 common_hex_prefix(Bin1, Bin2) ->
     {BitLength, _} = shared_prefix(Bin1, Bin2, <<>>, 0),
     BitLength div 4.
 
 
+%finds the column index for accessing the RowId with a Key
 get_column(<<Hex:4, _/bitstring>>, 0) ->
     <<Hex:4>>;
 get_column(<<_Hex:4, Rest/bitstring>>, RowId) ->
     get_column(<<Rest/bitstring>>, RowId - 1).
 
 
+%lenght of a hexadecimal number
 hex_length(Bitstring) ->
     BitLength = bit_size(Bitstring),
     BitLength div 4.
 
 
-
+%finds closes id to a key given a list of id
 find_closest_id(Key, Ids) ->
     lists:foldl(fun(Id, {BestId, BestDiff}) -> find_closest(Key, Id, BestId, BestDiff) end, {<<>>, 0}, Ids).
 
@@ -47,6 +50,7 @@ find_closest(Key, Id, BestId, BestDiff) ->
         false -> 
             {BestId, BestDiff}
     end.
+
 
 
 find_difference(Key1, Key2) ->

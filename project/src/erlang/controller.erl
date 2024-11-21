@@ -11,6 +11,7 @@ start(ControllerName, N, NodeName, JoinAddr) ->
     delete_dir(Dir),
     file:make_dir(Dir),
     Nodes = spawn_nodes(ControllerName, N, NodeName, [], JoinAddAtom),
+    io:format("Nodes:~p ~n", [Nodes]),
     loop(ControllerName, NodeName, Nodes, N).
 
 

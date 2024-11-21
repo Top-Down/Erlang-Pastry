@@ -8,6 +8,7 @@
 -define(CHUNK_SIZE, 1024).
 
 
+%retrieves file size
 get_file_size(Filename) ->
     case file:read_file_info(Filename) of
         {ok, FileInfo} ->
@@ -17,7 +18,7 @@ get_file_size(Filename) ->
     end.
 
 
-
+%deletes file
 delete_file(FilePath) ->
     case file:delete(FilePath) of
         ok ->
@@ -27,6 +28,7 @@ delete_file(FilePath) ->
     end.
 
 
+%stores file if size matches
 store_file(FilePath, Size, FileData) ->
     case filelib:ensure_dir(FilePath) of
         ok ->
@@ -42,6 +44,7 @@ store_file(FilePath, Size, FileData) ->
     end.
 
 
+%moves file from path to another
 move_file(SrcPath, DestPath) ->
     case filelib:ensure_dir(DestPath) of
         ok ->
@@ -62,6 +65,7 @@ move_file(SrcPath, DestPath) ->
     end.
 
 
+%lists all files
 list_files(Path) ->
     case file:list_dir(Path) of
         {ok, Items} ->

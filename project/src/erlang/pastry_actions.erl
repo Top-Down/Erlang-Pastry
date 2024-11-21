@@ -20,6 +20,7 @@
 -define(EXPIRATION, 5000).
 
 
+%response to a join request
 join_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_id, {TableKey, Table}, LeafSet, L2) ->
     Key = hash_name(FromName),
 
@@ -38,6 +39,7 @@ join_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_id, {TableKey, Table}, L
     {RoutingTable1, LeafSet1}.
 
 
+%updates tables after join response
 join_res_handle({SelfAddr, SelfName}, From, Row, {L,R}, RoutingTable, LeafSet, L2) ->
     LeavesList = L ++ R,
     AllLeaves = [S || {_, S} <- LeavesList],
@@ -48,6 +50,7 @@ join_res_handle({SelfAddr, SelfName}, From, Row, {L,R}, RoutingTable, LeafSet, L
     {NewRoutingTable, NewLeafSet}.
 
 
+%refreshes owner of a file
 refresh_file_owner({SelfAddr, SelfName}, RoutingTable, LeafSet) ->
     Folder = get_folder_path(SelfName),
     Files = list_files(Folder),
@@ -65,26 +68,31 @@ refresh_file_owner({SelfAddr, SelfName}, RoutingTable, LeafSet) ->
     end, Files).
 
 
+%sends keepalive
 keepalive(SelfInfo, RoutingTable, LeafSet) ->
     broadcast_routing(SelfInfo, RoutingTable, {alive}),
     broadcast_leaf(SelfInfo, LeafSet, {alive}).
 
 
+%replies to keepalive
 send_alive_res(SelfInfo, {FromAddr, _FromName}, Msg_Id) ->
     FromAddr ! {SelfInfo, Msg_Id, get_time(), {alive_res}}.
 
 
+%broadbasts info 
 share_info(SelfInfo, DestList, {L, R}) ->
     Leaves = L ++ R,
     NodesList = [Node || {_Key, Node} <- Leaves],
     broadcast_leaf(SelfInfo, DestList, {info, NodesList}).
 
 
+%updates tables with info
 info_res({_SelfAddr, SelfName}, NodesList, RoutingTable, LeafSet, L2) ->
     {NewRoutingTable, NewLeafSet} = update_list(SelfName, NodesList, RoutingTable, LeafSet, L2),
     {NewRoutingTable, NewLeafSet}.
 
 
+%updates tables on exit of a node
 exit_response({SelfAddr, SelfName}, From, RoutingTable, LeafSet, L2) ->
     CleanLeafSet = remove_leaf(LeafSet,From, SelfName),
     NewRoutingTable = remove_node(From, RoutingTable),
@@ -127,6 +135,7 @@ check_expired_nodes({_SelfAddr, SelfName}, AliveNodes, RoutingTable, LeafSet, Ex
     {NewAliveNodes, NewRoutingTable, NewLeafset}.
 
 
+%kills current node
 suicide(SelfInfo, RoutingTable, LeafSet) ->
     Msg = {exit},
     broadcast_leaf(SelfInfo, LeafSet, Msg),

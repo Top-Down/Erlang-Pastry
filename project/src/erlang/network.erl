@@ -2,6 +2,8 @@
 
 -export([start_net/3, send_message/2]).
 
+
+%starts network
 start_net(MailBox, NodeName, Cookie) ->
     % Set the cookie only if it's not already set
     case erlang:get_cookie() of

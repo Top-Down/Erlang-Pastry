@@ -14,6 +14,7 @@
 
 -define(EXPIRATION, 5000).
 
+%routes key using routing table and Leafset
 full_route(SelfName, RoutingTable, LeafSet, Key) ->
     case route_key(Key, RoutingTable) of
         {self, self} ->
@@ -30,6 +31,7 @@ full_route(SelfName, RoutingTable, LeafSet, Key) ->
     end.
 
 
+%given a list, updates the routing table and leaf set
 update_list(SelfName, NodesList, RoutingTable, LeafSet, L2) ->
     NewRoutingTable = update_routing(RoutingTable, NodesList),
     NewLeafSet = update_leaf_set(NodesList, LeafSet, L2, SelfName),
@@ -41,26 +43,28 @@ get_folder_path(SelfName) ->
     file:make_dir(FolderPath),
     FolderPath.
 
-
 get_file_path(SelfName, FileName) ->
     "./files/" ++ SelfName ++ "/"++ FileName.
 
 
+%gets backup folder for a node
 get_backup_folder_path(SelfName, NodeName) ->
     FolderPath = "./files/" ++ SelfName ++ "/backup/"++ NodeName ++ "/",
     file:make_dir(FolderPath),
     FolderPath.
 
-
+%finds backup path for a file
 get_backup_path(SelfName, NodeName, FileName) ->
     "./files/" ++ SelfName ++ "/backup/"++ NodeName ++ "/" ++ FileName.
 
 
+%saves file
 save_file_to_store({_SelfAddr, SelfName}, FileName, FileSize, FileData) ->
     FilePath = get_file_path(SelfName, FileName),
     store_file(FilePath, FileSize, FileData).
 
 
+%sends a file
 send_file_to_store({SelfAddr, SelfName}, {FromPid, _FromName}, OpCode, Msg_id, FileName) ->
     FilePath = get_file_path(SelfName, FileName),
     case file:read_file(FilePath) of
@@ -72,12 +76,14 @@ send_file_to_store({SelfAddr, SelfName}, {FromPid, _FromName}, OpCode, Msg_id, F
     end.
 
 
+%deletes file and sends message back
 delete_stored_file({SelfAddr, SelfName}, {FromAddr, _FromName}, OpCode, Msg_Id, FileName) ->
     FilePath = get_file_path(SelfName, FileName),
     delete_file(FilePath),
     FromAddr ! {{SelfAddr, SelfName}, Msg_Id, get_time(), {OpCode}}.
 
 
+%broadcast to leafset
 broadcast_leaf(SelfInfo, NodeList, Msg) ->
     broadcast_leaf(SelfInfo, NodeList, make_ref(), Msg).
 broadcast_leaf(SelfInfo, {L,R}, Msg_Id, Msg) ->
@@ -86,6 +92,7 @@ broadcast_leaf(SelfInfo, {L,R}, Msg_Id, Msg) ->
     broadcast(SelfInfo, NodeList, Msg_Id, Msg).
 
 
+%broadcast to full routing table
 broadcast_routing(SelfInfo, RoutingTable, Msg) ->
     broadcast_routing(SelfInfo, RoutingTable, make_ref(), Msg).
 
@@ -94,6 +101,7 @@ broadcast_routing(SelfInfo, RoutingTable, Msg_Id, Msg) ->
     broadcast(SelfInfo, NodeList, Msg_Id, Msg).
 
 
+%broadcast to list
 broadcast(_, [], _,_) ->
     done;
 broadcast(SelfInfo, [{NodePid, _Name}|T], Msg_id, Msg) ->

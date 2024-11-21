@@ -12,6 +12,7 @@
     get_all_files/7, check_expired_blacklist/2, all_files_res/4]).
 
 
+%finds store and seds addresss back
 find_store({SelfAddr, SelfName}, {FromAddr, FromName}, Msg_id, RoutingTable, LeafSet, FileName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
@@ -20,6 +21,7 @@ find_store({SelfAddr, SelfName}, {FromAddr, FromName}, Msg_id, RoutingTable, Lea
     end.
 
 
+%stores file
 store({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_id, FileName, FileSize, FileData, FilesList) ->
     Result = save_file_to_store({SelfAddr, SelfName}, FileName, FileSize, FileData),
     case Result of
@@ -32,6 +34,7 @@ store({SelfAddr, SelfName}, {FromAddr, _FromName}, Msg_id, FileName, FileSize, F
     end.
 
 
+%finds file and sends it to From
 find({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
@@ -40,6 +43,7 @@ find({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     end.
 
 
+%deletes file and sends ack
 delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     Key = hash_name(FileName),
     case full_route(SelfName, RoutingTable, LeafSet, Key) of
@@ -50,6 +54,7 @@ delete({SelfAddr, SelfName}, From, Msg_id, RoutingTable, LeafSet, FileName) ->
     end.
 
 
+%starts flooding and timers
 get_all_files({SelfAddr, SelfName}, From, Msg_Id, RoutingTable, LeafSet, BlackList, FloodTimeout) ->
     FilePath = get_folder_path(SelfName),
     FilesList = list_files(FilePath),
@@ -60,10 +65,12 @@ get_all_files({SelfAddr, SelfName}, From, Msg_Id, RoutingTable, LeafSet, BlackLi
     {FilesList, [{Msg_Id, get_time()} | BlackList]}.
 
 
+%sends list back to from
 all_files_res(SelfInfo, {FromAddr, _FromName}, Msg_Id, FilesList)->
     FromAddr ! {SelfInfo, Msg_Id, get_time(), {all_files_res, FilesList}}.
 
 
+%receives flooding and sends response forwards it if not in blackbox
 get_files_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_Id, RoutingTable, LeafSet, BlackList)->
     case lists:keymember(Msg_Id, 1, BlackList) of
         true -> BlackList;
@@ -78,6 +85,7 @@ get_files_res({SelfAddr, SelfName}, {FromPid, FromName}, Msg_Id, RoutingTable, L
     end.
 
 
+%adds received files to list
 get_files_res_handle(OldList, NewFiles)->
     NewList = OldList ++ [File || File <- NewFiles, not lists:member(File, OldList)],
     NewList.
